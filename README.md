@@ -1,4 +1,5 @@
 # Steam TUI
+[![Crates.io](https://img.shields.io/crates/v/steam-tui.svg)](https://crates.io/crates/steam-tui)
 
 <p align="center">
   <img width="600" alt="Example of rules_euler in action" src="screenshot.png">
