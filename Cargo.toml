@@ -26,7 +26,5 @@ fuzzy-matcher = "*"
 lazy_static = "*"
 
 image = "0.19.0"
-[dependencies.tui-image]
+[dependencies.tui-image-rgba-updated]
 version = "0.2.0"
-git = "https://github.com/AnotherGroupChat/tui-image"
-branch = "rgba"

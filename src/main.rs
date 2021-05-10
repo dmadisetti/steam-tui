@@ -6,7 +6,7 @@ use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::Altern
 use tui::{backend::TermionBackend, layout::Rect, Terminal};
 
 use image;
-use tui_image::{ColorMode, Image};
+use tui_image_rgba_updated::{ColorMode, Image};
 
 use steam_tui::util::event::{Event, Events};
 use steam_tui::util::paths::image_exists;

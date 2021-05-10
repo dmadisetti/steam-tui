@@ -619,7 +619,7 @@ dependencies = [
  "shellexpand",
  "termion",
  "tui",
- "tui-image",
+ "tui-image-rgba-updated",
 ]
 
 [[package]]
@@ -692,9 +692,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "tui-image"
+name = "tui-image-rgba-updated"
 version = "0.2.0"
-source = "git+https://github.com/AnotherGroupChat/tui-image?branch=rgba#0ff548ec9c973087f7d7aeee38a3bebecef24dd2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab2341154bfba58b00dd5dbf119ad724cbafcbb978882bc7c6778a2e19d45105"
 dependencies = [
  "failure",
  "image",
