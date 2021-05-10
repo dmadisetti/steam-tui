@@ -8,12 +8,14 @@
 ## About
 Just a simple TUI client for `steamcmd`. Allows for the graphical launching,
 updating, and downloading of steam games through a simple terminal client.
+Methodology informed by [steam-cli](https://github.com/berenm/steam-cli).
 
 ## Requirements
 
 [`steamcmd`](https://wiki.archlinux.org/title/steam#SteamCMD) is required to
 launch steam-tui, as `steam-tui` is essentially just a graphical wrapper for
-this program.
+this program. `wine` usage will be attempted if a native Linux game is not
+found.
 
 ## Why ?
 Because why not? Also, the Steam client seems to break on my Arch build. I have
