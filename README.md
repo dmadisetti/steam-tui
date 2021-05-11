@@ -1,18 +1,31 @@
 # Steam TUI
+[![Crates.io](https://img.shields.io/crates/v/steam-tui.svg)](https://crates.io/crates/steam-tui)
+
+## About
+Just a simple TUI client for `steamcmd`. Allows for the graphical launching,
+updating, and downloading of steam games through a simple terminal client.
+Methodology informed by [steam-cli](https://github.com/berenm/steam-cli).
 
 <p align="center">
   <img width="600" alt="Example of rules_euler in action" src="screenshot.png">
 </p>
 
-## About
-Just a simple TUI client for `steamcmd`. Allows for the graphical launching,
-updating, and downloading of steam games through a simple terminal client.
+## usage
+
+Login with `steamcmd` first to cache your credentials (don't trust some random app with your passwords):
+```bash
+steamcmd
+# Steam> login <user>
+# Steam> quit
+```
+Launch the binary `steam-tui`, and rejoice :tada:. Help is in the client.
 
 ## Requirements
 
 [`steamcmd`](https://wiki.archlinux.org/title/steam#SteamCMD) is required to
 launch steam-tui, as `steam-tui` is essentially just a graphical wrapper for
-this program.
+this program. `wine` usage will be attempted if a native Linux game is not
+found.
 
 ## Why ?
 Because why not? Also, the Steam client seems to break on my Arch build. I have
