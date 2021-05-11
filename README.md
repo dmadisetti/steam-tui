@@ -1,14 +1,24 @@
 # Steam TUI
 [![Crates.io](https://img.shields.io/crates/v/steam-tui.svg)](https://crates.io/crates/steam-tui)
 
-<p align="center">
-  <img width="600" alt="Example of rules_euler in action" src="screenshot.png">
-</p>
-
 ## About
 Just a simple TUI client for `steamcmd`. Allows for the graphical launching,
 updating, and downloading of steam games through a simple terminal client.
 Methodology informed by [steam-cli](https://github.com/berenm/steam-cli).
+
+<p align="center">
+  <img width="600" alt="Example of rules_euler in action" src="screenshot.png">
+</p>
+
+## usage
+
+Login with `steamcmd` first to cache your credentials (don't trust some random app with your passwords):
+```bash
+steamcmd
+# Steam> login <user>
+# Steam> quit
+```
+Launch the binary `steam-tui`, and rejoice :tada:. Help is in the client.
 
 ## Requirements
 
