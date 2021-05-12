@@ -14,7 +14,7 @@ use tui::{
     widgets::{Block, BorderType, Borders, Cell, List, ListItem, Paragraph, Row, Table},
 };
 
-const SPLASH: &'static str = r#"
+const SPLASH: &str = r#"
  . .................................................................................................
   . ................................................................................................
 . . ........nnnnMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMnnnn......... .
@@ -72,7 +72,7 @@ impl App {
     pub fn new(config: &Config) -> App {
         let user = config.default_user.clone();
         App {
-            mode: if user.len() == 0 {
+            mode: if user.is_empty() {
                 Mode::Login
             } else {
                 Mode::Loading
@@ -243,7 +243,7 @@ impl App {
                     spacer.clone(),
                 ];
                 // Construct table details
-                for (heading, value) in vec![
+                for &(heading, value) in &[
                     ("Homepage", &selected.homepage),
                     ("Developer", &selected.developer),
                     ("Publisher", &selected.publisher),
@@ -258,7 +258,7 @@ impl App {
                 }
                 if let Some(status) = status {
                     table.push(spacer.clone());
-                    for (heading, value) in vec![
+                    for &(heading, value) in &[
                         ("State", &status.state),
                         ("Installation", &status.installdir),
                         ("Size", &convert(status.size)),

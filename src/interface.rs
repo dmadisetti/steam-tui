@@ -15,13 +15,13 @@ pub struct GameStatus {
 }
 
 impl GameStatus {
-    pub fn new(data: &String) -> Result<GameStatus, STError> {
+    pub fn new(data: &str) -> Result<GameStatus, STError> {
         let data = data.lines();
         let data = data
-            .map(|l| match STATUS_LEX.tokenize(&l).as_slice() {
-                &["state", state] => Some(state),
-                &["dir", dir] => Some(dir),
-                &["disk", disk] => Some(disk),
+            .map(|l| match *STATUS_LEX.tokenize(&l).as_slice() {
+                ["state", state] => Some(state),
+                ["dir", dir] => Some(dir),
+                ["disk", disk] => Some(disk),
                 _ => None,
             })
             .filter(|d| d.is_some())
@@ -55,7 +55,7 @@ pub struct Launch {
     pub arguments: String,
 }
 impl Launch {
-    pub fn new(config: &HashMap<String, Datum>, installdir: &String) -> Result<Launch, STError> {
+    pub fn new(config: &HashMap<String, Datum>, installdir: &str) -> Result<Launch, STError> {
         let platform = match config.get("config") {
             Some(Datum::Nest(config)) => match config.get("oslist") {
                 Some(Datum::Value(ref platform)) => match platform.as_str() {
@@ -69,7 +69,7 @@ impl Launch {
             _ => Platform::Unknown,
         };
         Ok(Launch {
-            platform: platform,
+            platform,
             executable: executable_join(
                 &config
                     .get("executable")
@@ -98,7 +98,8 @@ impl Launch {
                 .map(|k| k.parse::<i32>().unwrap_or(-1))
                 .filter(|k| k >= &0)
                 .collect::<Vec<i32>>();
-            keys.sort();
+            // UNstable sort recommended by clippy for primatives
+            keys.sort_unstable();
             for key in keys {
                 if let Some(Datum::Nest(config)) = config.get(&format!("{}", key)) {
                     launches.push(Launch::new(&config, &installdir)?);
@@ -192,13 +193,13 @@ pub struct Account {
     _language: String,
 }
 impl Account {
-    pub fn new(data: &String) -> Result<Account, STError> {
+    pub fn new(data: &str) -> Result<Account, STError> {
         let data = data.lines();
         let data = data
-            .map(|l| match ACCOUNT_LEX.tokenize(&l).as_slice() {
-                &["Account", account] => Some(account),
-                &["SteamID", id] => Some(id),
-                &["Language", lang] => Some(lang),
+            .map(|l| match *ACCOUNT_LEX.tokenize(&l).as_slice() {
+                ["Account", account] => Some(account),
+                ["SteamID", id] => Some(id),
+                ["Language", lang] => Some(lang),
                 _ => None,
             })
             .filter(|d| d.is_some())
@@ -229,9 +230,8 @@ impl SteamCmd {
             .stdout(process::Stdio::piped())
             .spawn();
 
-        match attempt {
-            Err(err) => return Err(STError::Process(err)),
-            _ => {}
+        if let Err(err) = attempt {
+            return Err(STError::Process(err));
         }
         let child = attempt?;
 
@@ -269,16 +269,22 @@ impl SteamCmd {
             &format!("runscript {}", script),
         ])
     }
-
-    pub fn next(&mut self) -> Result<Vec<u8>, STError> {
-        match self.iter.next() {
+    pub fn write(&mut self, line: &str) -> Result<(), STError> {
+        self.stdin.write_all(line.as_bytes())?;
+        Ok(())
+    }
+    pub fn maybe_next(&mut self) -> Result<Vec<u8>, STError> {
+        match self.next() {
             Some(Ok(result)) => Ok(result),
             _ => Err(STError::Problem("Unable to read from stdin".into())),
         }
     }
-    pub fn write(&mut self, line: &String) -> Result<(), STError> {
-        self.stdin.write_all(line.as_bytes())?;
-        Ok(())
+}
+
+impl Iterator for SteamCmd {
+    type Item = Result<Vec<u8>, std::io::Error>;
+    fn next(&mut self) -> Option<Result<Vec<u8>, std::io::Error>> {
+        self.iter.next()
     }
 }
 

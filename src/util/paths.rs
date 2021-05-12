@@ -1,6 +1,5 @@
 use crate::util::error::STError;
 
-use shellexpand;
 use std::io::Write;
 use std::{
     env, fs, io,
@@ -38,11 +37,11 @@ pub fn steam_directory() -> Result<PathBuf, STError> {
     Ok(dir.to_path_buf())
 }
 
-pub fn executable_join(executable: &String, installdir: &String) -> Result<PathBuf, STError> {
+pub fn executable_join(executable: &str, installdir: &str) -> Result<PathBuf, STError> {
     let installdir = Path::new(installdir);
     let executable = Path::new(executable);
     let script_path = installdir.join(executable);
-    Ok(script_path.to_path_buf())
+    Ok(script_path)
 }
 
 pub fn image_exists(id: i32) -> Result<PathBuf, STError> {
@@ -51,7 +50,7 @@ pub fn image_exists(id: i32) -> Result<PathBuf, STError> {
     let image = Path::new(image);
     let image = dir.join(image);
     if image.exists() {
-        Ok(image.to_path_buf())
+        Ok(image)
     } else {
         Err(STError::Problem(format!(
             "Image doesn't exist: {:?}",
@@ -60,12 +59,12 @@ pub fn image_exists(id: i32) -> Result<PathBuf, STError> {
     }
 }
 
-pub fn executable_exists(executable: &String) -> Result<PathBuf, STError> {
+pub fn executable_exists(executable: &str) -> Result<PathBuf, STError> {
     let dir = steam_directory()?;
     let executable = Path::new(executable);
     let script_path = dir.join(executable);
     if script_path.exists() {
-        Ok(script_path.to_path_buf())
+        Ok(script_path)
     } else {
         Err(STError::Problem("Executable doesn't exist".to_string()))
     }
@@ -75,7 +74,7 @@ pub fn install_script_location(login: String, id: i32) -> Result<PathBuf, STErro
     let dir = config_directory()?;
     let script_path = &format!("{}.install", id);
     let script_path = Path::new(script_path);
-    let script_path = dir.join(script_path.clone());
+    let script_path = dir.join(script_path);
     let mut f = fs::File::create(&script_path)?;
     let contents = format!(
         r#"
@@ -86,7 +85,7 @@ quit
         login, id
     );
     f.write_all(contents.as_bytes())?;
-    Ok(script_path.to_path_buf())
+    Ok(script_path)
 }
 
 pub fn config_location() -> Result<PathBuf, STError> {
@@ -94,7 +93,7 @@ pub fn config_location() -> Result<PathBuf, STError> {
     let config_path = Path::new("config.json");
     let config_path = dir.join(config_path);
     touch(&config_path)?;
-    Ok(config_path.to_path_buf())
+    Ok(config_path)
 }
 
 pub fn cache_location() -> Result<PathBuf, STError> {
@@ -102,5 +101,5 @@ pub fn cache_location() -> Result<PathBuf, STError> {
     let config_path = Path::new("games.json");
     let config_path = dir.join(config_path);
     touch(&config_path)?;
-    Ok(config_path.to_path_buf())
+    Ok(config_path)
 }

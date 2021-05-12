@@ -5,7 +5,6 @@ use std::io;
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{backend::TermionBackend, layout::Rect, Terminal};
 
-use image;
 use tui_image_rgba_updated::{ColorMode, Image};
 
 use steam_tui::util::event::{Event, Events};
@@ -109,12 +108,11 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Event::Input(input) = events.next()? {
             match app.mode {
-                Mode::Terminated(_) => match input {
-                    Key::Char('q') => {
+                Mode::Terminated(_) => {
+                    if let Key::Char('q') = input {
                         break;
                     }
-                    _ => {}
-                },
+                }
                 Mode::Normal | Mode::Searched => match input {
                     Key::Char('l') => {
                         app.mode = Mode::Login;
@@ -158,7 +156,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 Mode::Login | Mode::Failed => match input {
                     Key::Esc => {
                         if client.is_logged_in()? {
-                            if game_list.query.len() > 0 {
+                            if game_list.query.is_empty() {
                                 app.mode = Mode::Normal;
                             } else {
                                 app.mode = Mode::Searched;
@@ -208,7 +206,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 _ => {}
             }
         }
-        if &app.mode == &Mode::Loading {
+        if app.mode == Mode::Loading {
             match client.get_state()? {
                 State::Loaded(_, -2) => {
                     client.load_games()?;
