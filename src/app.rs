@@ -243,7 +243,7 @@ impl App {
                     spacer.clone(),
                 ];
                 // Construct table details
-                for (heading, value) in vec![
+                for &(heading, value) in &[
                     ("Homepage", &selected.homepage),
                     ("Developer", &selected.developer),
                     ("Publisher", &selected.publisher),
@@ -258,7 +258,7 @@ impl App {
                 }
                 if let Some(status) = status {
                     table.push(spacer.clone());
-                    for (heading, value) in vec![
+                    for &(heading, value) in &[
                         ("State", &status.state),
                         ("Installation", &status.installdir),
                         ("Size", &convert(status.size)),
