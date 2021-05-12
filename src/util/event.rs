@@ -50,15 +50,13 @@ impl Events {
             let stop = stop.clone();
             thread::spawn(move || {
                 let stdin = io::stdin();
-                for evt in stdin.keys() {
-                    if let Ok(key) = evt {
-                        if let Err(err) = tx.send(Event::Input(key)) {
-                            eprintln!("{}", err);
-                            return;
-                        }
-                        if stop.load(Ordering::Relaxed) {
-                            return;
-                        }
+                for key in stdin.keys().flatten() {
+                    if let Err(err) = tx.send(Event::Input(key)) {
+                        eprintln!("{}", err);
+                        return;
+                    }
+                    if stop.load(Ordering::Relaxed) {
+                        return;
                     }
                 }
             })
@@ -80,6 +78,12 @@ impl Events {
 
     pub fn next(&self) -> Result<Event<Key>, mpsc::RecvError> {
         self.rx.recv()
+    }
+}
+
+impl Default for Events {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -32,14 +32,12 @@ impl<T: Named> StatefulList<T> {
     }
 
     pub fn selected(&self) -> Option<&T> {
-        match self.state.selected() {
-            Some(i) => Some(
-                self.activated()
-                    .get(i)
-                    .expect("Index is guarded by next, previous. This is safe."),
-            ),
-            None => None,
-        }
+        self.state.selected().map(|i| {
+            *self
+                .activated()
+                .get(i)
+                .expect("Index is guarded by next, previous. This is safe.")
+        })
     }
 
     pub fn activated(&self) -> Vec<&T> {
@@ -52,12 +50,11 @@ impl<T: Named> StatefulList<T> {
                     .is_some()
             })
             .filter(|nameable| nameable.is_valid())
-            .map(|nameable| nameable.clone())
             .collect::<Vec<_>>()
     }
 
     pub fn restart(&mut self) {
-        if self.activated().len() == 0 {
+        if self.activated().is_empty() {
             self.state.select(None);
         } else {
             self.state.select(Some(0));
@@ -93,5 +90,11 @@ impl<T: Named> StatefulList<T> {
     }
     pub fn unselect(&mut self) {
         self.state.select(None);
+    }
+}
+
+impl<T: Named> Default for StatefulList<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }

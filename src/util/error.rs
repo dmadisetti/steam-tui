@@ -1,6 +1,5 @@
 use crate::util::parser::Command;
 
-use serde_json;
 use shellexpand::LookupError;
 use std::error;
 use std::fmt;

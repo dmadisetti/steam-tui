@@ -56,7 +56,7 @@ fn execute(
                         if downloading.contains(&id) {
                             continue;
                         }
-                        downloading.insert(id.clone());
+                        downloading.insert(id);
                         let name = acct.account.clone();
                         thread::spawn(move || {
                             SteamCmd::script(
@@ -79,7 +79,7 @@ fn execute(
                             let args = launchable.arguments.clone();
                             thread::spawn(move || {
                                 process::Command::new(command)
-                                    .args(args.split(" "))
+                                    .args(args.split(' '))
                                     .stdout(process::Stdio::null())
                                     .spawn()
                                     .unwrap();
@@ -92,94 +92,93 @@ fn execute(
                     cmd.write(&line)?;
                     let mut updated = 0;
                     let waiting = queue.len();
-                    if let Ok(buf) = cmd.next() {
-                        let response = String::from_utf8_lossy(&buf);
-                        match INPUT_LEX.tokenize(&line).as_slice() {
-                            &["login", _] => {
-                                if response.to_string().contains("Login Failure") {
-                                    let mut state = state.lock()?;
-                                    *state = State::Failed;
-                                } else {
-                                    queue.push_front(Command::Cli("info\n".to_string()));
-                                }
-                            }
-                            &["info"] => {
-                                account = match Account::new(&response.to_string()) {
-                                    Ok(acct) => Some(acct),
-                                    _ => None,
-                                };
+                    let buf = cmd.maybe_next()?;
+                    let response = String::from_utf8_lossy(&buf);
+                    match *INPUT_LEX.tokenize(&line).as_slice() {
+                        ["login", _] => {
+                            if response.to_string().contains("Login Failure") {
                                 let mut state = state.lock()?;
-                                *state = State::Loaded(0, -2);
+                                *state = State::Failed;
+                            } else {
+                                queue.push_front(Command::Cli("info\n".to_string()));
                             }
-                            &["licenses_print"] => {
-                                // Extract licenses
-                                games = Vec::new();
-                                let licenses = response.to_string();
-                                let keys = licenses
-                                    .lines()
-                                    .enumerate()
-                                    .filter(|(i, _)| i % 4 == 0)
-                                    .map(|(_, l)| match LICENSE_LEX.tokenize(&l).as_slice() {
-                                        &["packageID", id] => id.parse::<i32>().unwrap_or(-1),
-                                        _ => -1,
-                                    })
-                                    .filter(|x| x >= &0)
-                                    .collect::<Vec<i32>>();
-                                let total = keys.len();
-                                updated += total as i32;
-                                for key in keys {
-                                    queue.push_front(Command::Cli(format!(
-                                        "package_info_print {}\n",
-                                        key
-                                    )));
-                                }
-                                let mut state = state.lock()?;
-                                *state = State::Loaded(0, total as i32);
+                        }
+                        ["info"] => {
+                            account = match Account::new(&response.to_string()) {
+                                Ok(acct) => Some(acct),
+                                _ => None,
+                            };
+                            let mut state = state.lock()?;
+                            *state = State::Loaded(0, -2);
+                        }
+                        ["licenses_print"] => {
+                            // Extract licenses
+                            games = Vec::new();
+                            let licenses = response.to_string();
+                            let keys = licenses
+                                .lines()
+                                .enumerate()
+                                .filter(|(i, _)| i % 4 == 0)
+                                .map(|(_, l)| match *LICENSE_LEX.tokenize(&l).as_slice() {
+                                    ["packageID", id] => id.parse::<i32>().unwrap_or(-1),
+                                    _ => -1,
+                                })
+                                .filter(|x| x >= &0)
+                                .collect::<Vec<i32>>();
+                            let total = keys.len();
+                            updated += total as i32;
+                            for key in keys {
+                                queue.push_front(Command::Cli(format!(
+                                    "package_info_print {}\n",
+                                    key
+                                )));
                             }
-                            &["package_info_print", key] => {
-                                let mut lines = response.lines();
-                                updated += 1;
-                                if let Datum::Nest(map) = parse(&mut lines) {
-                                    if let Some(map) = map.get(key) {
-                                        if let Some(Datum::Nest(apps)) =
-                                            map.maybe_nest()?.get("appids")
-                                        {
-                                            for wrapper in apps.values() {
-                                                if let Datum::Value(id) = wrapper {
-                                                    let key = id.parse::<i32>().unwrap_or(-1);
-                                                    if key >= 0 {
-                                                        queue.push_front(Command::Cli(format!(
-                                                            "app_info_print {}\n",
-                                                            key
-                                                        )));
-                                                    }
+                            let mut state = state.lock()?;
+                            *state = State::Loaded(0, total as i32);
+                        }
+                        ["package_info_print", key] => {
+                            let mut lines = response.lines();
+                            updated += 1;
+                            if let Datum::Nest(map) = parse(&mut lines) {
+                                if let Some(map) = map.get(key) {
+                                    if let Some(Datum::Nest(apps)) = map.maybe_nest()?.get("appids")
+                                    {
+                                        for wrapper in apps.values() {
+                                            if let Datum::Value(id) = wrapper {
+                                                let key = id.parse::<i32>().unwrap_or(-1);
+                                                if key >= 0 {
+                                                    queue.push_front(Command::Cli(format!(
+                                                        "app_info_print {}\n",
+                                                        key
+                                                    )));
                                                 }
                                             }
                                         }
                                     }
-                                };
-                                let mut state = state.lock()?;
-                                match *state {
-                                    State::Loaded(_, _) => {}
-                                    _ => *state = State::Loaded(updated, queue.len() as i32),
                                 }
-                            }
-                            &["app_info_print", key] => {
-                                let mut lines = response.lines();
-                                updated += 1;
-                                if let Ok(game) = Game::new(&key, &mut lines) {
-                                    games.push(game);
-                                }
-                            }
-                            &["app_status", _id] => {
-                                sender.send(response.to_string())?;
-                            }
-                            &["quit"] => return Ok(()),
-                            _ => {
-                                sender.send(response.to_string())?;
+                            };
+                            let mut state = state.lock()?;
+                            match *state {
+                                State::Loaded(_, _) => {}
+                                _ => *state = State::Loaded(updated, queue.len() as i32),
                             }
                         }
+                        ["app_info_print", key] => {
+                            let mut lines = response.lines();
+                            updated += 1;
+                            if let Ok(game) = Game::new(&key, &mut lines) {
+                                games.push(game);
+                            }
+                        }
+                        ["app_status", _id] => {
+                            sender.send(response.to_string())?;
+                        }
+                        ["quit"] => return Ok(()),
+                        _ => {
+                            sender.send(response.to_string())?;
+                        }
                     }
+
                     let mut state = state.lock()?;
                     if let State::Loaded(o, e) = *state {
                         updated += o;
@@ -194,7 +193,7 @@ fn execute(
                         }
                     }
                     // Iterate to scrub past Steam> prompt
-                    let _ = cmd.next()?;
+                    let _ = cmd.maybe_next()?;
                 }
             }
         }
@@ -241,17 +240,17 @@ impl Client {
         Ok(())
     }
 
-    pub fn run(&self, launchables: &Vec<Launch>) -> Result<(), STError> {
+    pub fn run(&self, launchables: &[Launch]) -> Result<(), STError> {
         let sender = self.sender.lock()?;
-        sender.send(Command::Run(launchables.clone()))?;
+        sender.send(Command::Run(launchables.to_owned().to_vec()))?;
         Ok(())
     }
 
-    pub fn login(&self, user: &String) -> Result<(), STError> {
+    pub fn login(&self, user: &str) -> Result<(), STError> {
         let mut state = self.state.lock()?;
         *state = State::LoggedOut;
         let sender = self.sender.lock()?;
-        sender.send(Command::Cli(String::from(format!("login {}\n", user))))?;
+        sender.send(Command::Cli(format!("login {}\n", user)))?;
         Ok(())
     }
 
@@ -271,9 +270,9 @@ impl Client {
 
     pub fn status(&self, id: i32) -> Result<GameStatus, STError> {
         let sender = self.sender.lock()?;
-        sender.send(Command::Cli(String::from(format!("app_status {}\n", id))))?;
+        sender.send(Command::Cli(format!("app_status {}\n", id)))?;
         let receiver = self.receiver.lock()?;
-        Ok(GameStatus::new(&receiver.recv()?)?)
+        GameStatus::new(&receiver.recv()?)
     }
 
     fn start_process(
@@ -296,6 +295,12 @@ impl Client {
     }
 }
 
+impl Default for Client {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for Client {
     fn drop(&mut self) {
         let sender = self
@@ -305,12 +310,11 @@ impl Drop for Client {
         let _ = sender.send(Command::Cli(String::from("quit\n")));
     }
 }
-
 #[cfg(test)]
 mod tests {
     use crate::client::{Client, State};
     use crate::util::parser::Command;
-    use std::sync::mpsc::{channel};
+    use std::sync::mpsc::channel;
     use std::sync::Arc;
     use std::sync::Mutex;
 
@@ -323,6 +327,9 @@ mod tests {
         sender
             .send(Command::Cli(pollution.clone()))
             .expect("Fails to send message...");
-        assert!(&receiver.recv().expect("Channel dies").contains(&"pollution".to_string()));
+        assert!(&receiver
+            .recv()
+            .expect("Channel dies")
+            .contains(&"pollution".to_string()));
     }
 }

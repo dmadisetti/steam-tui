@@ -14,7 +14,7 @@ use tui::{
     widgets::{Block, BorderType, Borders, Cell, List, ListItem, Paragraph, Row, Table},
 };
 
-const SPLASH: &'static str = r#"
+const SPLASH: &str = r#"
  . .................................................................................................
   . ................................................................................................
 . . ........nnnnMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMnnnn......... .
@@ -72,7 +72,7 @@ impl App {
     pub fn new(config: &Config) -> App {
         let user = config.default_user.clone();
         App {
-            mode: if user.len() == 0 {
+            mode: if user.is_empty() {
                 Mode::Login
             } else {
                 Mode::Loading

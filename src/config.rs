@@ -2,7 +2,6 @@ use crate::util::error::STError;
 use crate::util::paths::config_location;
 
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::fs;
 
 #[derive(Serialize, Deserialize, Clone)]

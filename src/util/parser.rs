@@ -24,11 +24,11 @@ impl Lexer {
             captures
                 .iter() // All the captured groups
                 .skip(1) // Skipping the complete match
-                .flat_map(|c| c) // Ignoring all empty optional matches
+                .flatten() // Ignoring all empty optional matches
                 .map(|c| c.as_str()) // Grab the original strings
                 .collect::<Vec<_>>() // Create a vector
         });
-        captures.unwrap_or_else(|| Vec::new())
+        captures.unwrap_or_else(Vec::new)
     }
 }
 
@@ -99,14 +99,14 @@ pub enum Command {
 pub fn parse(block: &mut dyn Iterator<Item = &str>) -> Datum {
     let mut map = HashMap::new();
     while let Some(line) = block.next() {
-        match DATA_LEX.tokenize(&line).as_slice() {
-            &["}"] => {
+        match *DATA_LEX.tokenize(&line).as_slice() {
+            ["}"] => {
                 break;
             }
-            &[key, value] => {
+            [key, value] => {
                 map.insert(key.to_string(), Datum::Value(value.to_string()));
             }
-            &[key] => {
+            [key] => {
                 block.next();
                 map.insert(key.to_string(), parse(block));
             }
