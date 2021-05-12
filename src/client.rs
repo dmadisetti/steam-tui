@@ -93,7 +93,7 @@ fn execute(
                     let mut updated = 0;
                     let waiting = queue.len();
                     if let Ok(buf) = cmd.next() {
-                        let response = std::str::from_utf8(&buf)?;
+                        let response = String::from_utf8_lossy(&buf);
                         match INPUT_LEX.tokenize(&line).as_slice() {
                             &["login", _] => {
                                 if response.to_string().contains("Login Failure") {
@@ -146,10 +146,13 @@ fn execute(
                                         {
                                             for wrapper in apps.values() {
                                                 if let Datum::Value(id) = wrapper {
-                                                    queue.push_front(Command::Cli(format!(
-                                                        "app_info_print {}\n",
-                                                        id
-                                                    )));
+                                                    let key = id.parse::<i32>().unwrap_or(-1);
+                                                    if key >= 0 {
+                                                        queue.push_front(Command::Cli(format!(
+                                                            "app_info_print {}\n",
+                                                            key
+                                                        )));
+                                                    }
                                                 }
                                             }
                                         }
@@ -300,5 +303,26 @@ impl Drop for Client {
             .lock()
             .expect("In destructor, error handling is meaningless");
         let _ = sender.send(Command::Cli(String::from("quit\n")));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::client::{Client, State};
+    use crate::util::parser::Command;
+    use std::sync::mpsc::{channel};
+    use std::sync::Arc;
+    use std::sync::Mutex;
+
+    #[test]
+    fn test_polluted_data() {
+        let (tx1, receiver) = channel();
+        let (sender, rx2) = channel();
+        Client::start_process(Arc::new(Mutex::new(State::LoggedOut)), tx1, rx2);
+        let pollution = String::from("pollution ™️ ö ®Ø 天 🎉 Maxisâ¢\n");
+        sender
+            .send(Command::Cli(pollution.clone()))
+            .expect("Fails to send message...");
+        assert!(&receiver.recv().expect("Channel dies").contains(&"pollution".to_string()));
     }
 }

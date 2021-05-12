@@ -115,3 +115,54 @@ pub fn parse(block: &mut dyn Iterator<Item = &str>) -> Datum {
     }
     Datum::Nest(map)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::util::parser::{parse, Datum};
+    #[test]
+    fn test_parse_data() {
+        let mut block = r#"
+"hmm"
+{
+    "vdl" "format"
+    "is"
+    {
+      "silly"
+      {
+          but hopefully
+          this is robust
+      }
+      "hmm" "™️ and at least one with an accented o, ö and a registered trademark symbol, ®"
+      "otherØ 天 🎉" "Do you have any games with non-standard latin characters? Ü Ø 天 🎉 ?"
+    }
+}
+            "#
+        .lines();
+        let map = parse(&mut block);
+        let maybe_map = map.maybe_nest();
+        assert!(maybe_map.is_ok());
+        let map = maybe_map.unwrap();
+        assert_eq!(map.len(), 1);
+        let map = map.values().next().unwrap().maybe_nest().unwrap();
+        assert_eq!(map.len(), 2);
+        assert_eq!(
+            Some(&Datum::Value("format".to_string())),
+            map.get(&"vdl".to_string())
+        );
+        let map = map.get(&"is".to_string()).unwrap().maybe_nest().unwrap();
+        assert_eq!(map.len(), 3);
+        let inner = map
+            .get(&"silly".to_string())
+            .expect("failed to unwrap")
+            .maybe_nest()
+            .expect("Failed to properly parse");
+        assert_eq!(inner.len(), 0);
+        eprintln!("{:?}", map);
+        let complex = map
+            .get(&"otherØ 天 🎉".to_string())
+            .unwrap()
+            .maybe_value()
+            .unwrap();
+        assert!(complex.contains(&"Ü".to_string()));
+    }
+}
