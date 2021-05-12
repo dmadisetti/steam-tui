@@ -1,5 +1,5 @@
 # Steam TUI
-[![Crates.io](https://img.shields.io/crates/v/steam-tui.svg)](https://crates.io/crates/steam-tui)
+[![tests](https://github.com/dmadisetti/steam-tui/actions/workflows/test.yml/badge.svg)](https://github.com/dmadisetti/steam-tui/actions/workflows/test.yml) [![Crates.io](https://img.shields.io/crates/v/steam-tui.svg)](https://crates.io/crates/steam-tui)
 
 ## About
 Just a simple TUI client for `steamcmd`. Allows for the graphical launching,
