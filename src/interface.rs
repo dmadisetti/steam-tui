@@ -48,6 +48,13 @@ pub enum Platform {
     Unknown,
 }
 
+// #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+// pub struct Launch {
+//     pub platform: Platform,
+//     pub executable: String,
+//     pub arguments: String,
+// }
+
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Launch {
     pub platform: Platform,

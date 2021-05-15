@@ -3,8 +3,13 @@ use crate::interface::*;
 use crate::util::{
     error::STError,
     parser::*,
-    paths::{cache_location, executable_exists, install_script_location, steam_run_wrapper},
+    paths::{
+        cache_location, executable_exists, install_script_location, launch_script_location,
+        steam_run_wrapper,
+    },
 };
+
+use port_scanner::local_port_available;
 
 use std::process;
 use std::sync::Arc;
@@ -15,6 +20,8 @@ use std::fs;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Mutex;
 use std::thread;
+
+const STEAM_PORT: u16 = 57343;
 
 #[derive(PartialEq, Clone)]
 pub enum State {
@@ -70,11 +77,25 @@ fn execute(
                     };
                 }
                 Some(Command::Run(launchables)) => {
+                    // IF steam is running (we can check for port tcp/57343), then
+                    //   SteamCmd::script("login, app_run <>, quit")
+                    // otherwise attempt to launch normally.
+                    if local_port_available(STEAM_PORT) {
+                        if let Some(ref acct) = account {
+                            let name = acct.account.clone();
+                            thread::spawn(move || {
+                                SteamCmd::script(
+                                    launch_script_location(name, 0)
+                                        .unwrap()
+                                        .to_str()
+                                        .expect("Launch thread failed."),
+                                )
+                                .unwrap();
+                            });
+                            break;
+                        }
+                    }
                     for launchable in launchables {
-                        // TODO: Check if steam is currently running.
-                        // IF steam is running (we can check for port tcp/57343), then
-                        //   SteamCmd::script("login, app_run <>, quit")
-                        // otherwise proceed as follows.
                         if let Ok(path) = executable_exists(&launchable.executable) {
                             let mut command = match launchable.platform {
                                 Platform::Windows => vec![
