@@ -92,7 +92,7 @@ impl Datum {
 pub enum Command {
     Cli(String),
     Install(i32),
-    Run(Vec<Launch>),
+    Run(i32, Vec<Launch>),
     Restart,
 }
 

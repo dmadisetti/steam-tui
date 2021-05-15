@@ -76,7 +76,7 @@ fn execute(
                         });
                     };
                 }
-                Some(Command::Run(launchables)) => {
+                Some(Command::Run(id, launchables)) => {
                     // IF steam is running (we can check for port tcp/57343), then
                     //   SteamCmd::script("login, app_run <>, quit")
                     // otherwise attempt to launch normally.
@@ -85,7 +85,7 @@ fn execute(
                             let name = acct.account.clone();
                             thread::spawn(move || {
                                 SteamCmd::script(
-                                    launch_script_location(name, 0)
+                                    launch_script_location(name, id)
                                         .unwrap()
                                         .to_str()
                                         .expect("Launch thread failed."),
@@ -279,9 +279,9 @@ impl Client {
         Ok(())
     }
 
-    pub fn run(&self, launchables: &[Launch]) -> Result<(), STError> {
+    pub fn run(&self, id: i32, launchables: &[Launch]) -> Result<(), STError> {
         let sender = self.sender.lock()?;
-        sender.send(Command::Run(launchables.to_owned().to_vec()))?;
+        sender.send(Command::Run(id, launchables.to_owned().to_vec()))?;
         Ok(())
     }
 

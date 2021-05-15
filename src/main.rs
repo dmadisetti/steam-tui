@@ -139,7 +139,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Key::Char('\n') => {
                         if let Some(game) = game_list.selected() {
-                            client.run(&game.launch)?;
+                            client.run(game.id, &game.launch)?;
                         }
                     }
                     Key::Char('d') => {
