@@ -142,6 +142,9 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             client.run(game.id, &game.launch)?;
                         }
                     }
+                    Key::Char(' ') => {
+                        client.start_client()?;
+                    }
                     Key::Char('d') => {
                         if let Some(game) = game_list.selected() {
                             client.install(game.id as i32)?;

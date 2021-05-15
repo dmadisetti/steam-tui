@@ -93,6 +93,7 @@ pub enum Command {
     Cli(String),
     Install(i32),
     Run(i32, Vec<Launch>),
+    StartClient,
     Restart,
 }
 

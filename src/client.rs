@@ -41,6 +41,9 @@ fn execute(
     let mut queue = VecDeque::new();
     let mut games = Vec::new();
     let mut account: Option<Account> = None;
+
+    // TODO(#20) Pass in Arcs for download status into threads. If requested state is in
+    // downloading, show satus.
     let mut downloading: HashSet<i32> = HashSet::new();
 
     loop {
@@ -48,6 +51,24 @@ fn execute(
         loop {
             match queue.pop_back() {
                 None => break,
+                Some(Command::StartClient) => {
+                    if !local_port_available(STEAM_PORT) {
+                        thread::spawn(move || {
+                            process::Command::new("steam")
+                                .args(vec![
+                                    "-console",
+                                    "-dev",
+                                    "-nofriendsui",
+                                    "-no-browser",
+                                    "+open \"steam://\"",
+                                ])
+                                .stdout(process::Stdio::null())
+                                .stderr(process::Stdio::null())
+                                .spawn()
+                                .unwrap();
+                        });
+                    }
+                }
                 Some(Command::Restart) => {
                     let mut state = state.lock()?;
                     *state = State::LoggedOut;
@@ -120,6 +141,7 @@ fn execute(
                                 process::Command::new(entry)
                                     .args(command)
                                     .stdout(process::Stdio::null())
+                                    .stderr(process::Stdio::null())
                                     .spawn()
                                     .unwrap();
                             });
@@ -239,6 +261,7 @@ fn execute(
     }
 }
 
+/// Manages and interfaces with SteamCmd threads.
 pub struct Client {
     receiver: Mutex<Receiver<String>>,
     sender: Mutex<Sender<Command>>,
@@ -246,6 +269,7 @@ pub struct Client {
 }
 
 impl Client {
+    /// Spawns a StemCmd process to interface with.
     pub fn new() -> Client {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
@@ -259,6 +283,7 @@ impl Client {
         client
     }
 
+    /// Ensures `State` is `State::LoggedIn`.
     pub fn is_logged_in(&self) -> Result<bool, STError> {
         Ok(self.get_state()? == State::LoggedIn)
     }
@@ -267,24 +292,30 @@ impl Client {
         Ok(self.state.lock()?.clone())
     }
 
+    /// Runs installation script for the provided game id.
     pub fn install(&self, id: i32) -> Result<(), STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::Install(id))?;
         Ok(())
     }
 
+    /// Quits previous SteamCmd instance, and spawns a new one. This can be useful for getting more
+    /// state data. Old processes fail to update due to short comings in SteamCmd.
     pub fn restart(&self) -> Result<(), STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::Restart)?;
         Ok(())
     }
 
+    /// Launches the provided game id using 'app_run' in steemcmd, or the raw executable depending
+    /// on the Steam client state.
     pub fn run(&self, id: i32, launchables: &[Launch]) -> Result<(), STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::Run(id, launchables.to_owned().to_vec()))?;
         Ok(())
     }
 
+    /// Attempts to login the provided user string.
     pub fn login(&self, user: &str) -> Result<(), STError> {
         let mut state = self.state.lock()?;
         *state = State::LoggedOut;
@@ -293,6 +324,15 @@ impl Client {
         Ok(())
     }
 
+    /// Starts off the process of parsing all games from SteamCmd. First `State` is set to be in an
+    /// unloaded state for `State::Loaded`.  The process start by calling 'licenses_print' which
+    /// then extracts packageIDs, and calls 'package_info_print' for each package. This in turn
+    /// extracts appIDs, and gets app particular data by calling 'app_info_print' and binds it to a
+    /// `Game` object. When all data is loaded, the games are dumped to a file and the state is
+    /// changed to `State::LoggedIn` indicating that all data has been extracted and can be
+    /// presented.
+    /// TODO(#8): Check for cached games prior to reloading everything, unless explicitly
+    /// restarted.
     pub fn load_games(&self) -> Result<(), STError> {
         let mut state = self.state.lock()?;
         *state = State::Loaded(0, -1);
@@ -301,17 +341,26 @@ impl Client {
         Ok(())
     }
 
+    /// Extracts games from cached location.
     pub fn games(&self) -> Result<Vec<Game>, STError> {
         let db_content = fs::read_to_string(cache_location()?)?;
         let parsed: Vec<Game> = serde_json::from_str(&db_content)?;
         Ok(parsed)
     }
 
+    /// Binds data from 'app_status' to a `GameStatus` object.
     pub fn status(&self, id: i32) -> Result<GameStatus, STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::Cli(format!("app_status {}\n", id)))?;
         let receiver = self.receiver.lock()?;
         GameStatus::new(&receiver.recv()?)
+    }
+
+    /// Extracts games from cached location.
+    pub fn start_client(&self) -> Result<(), STError> {
+        let sender = self.sender.lock()?;
+        sender.send(Command::StartClient)?;
+        Ok(())
     }
 
     fn start_process(
