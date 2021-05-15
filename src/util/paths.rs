@@ -37,6 +37,24 @@ pub fn steam_directory() -> Result<PathBuf, STError> {
     Ok(dir.to_path_buf())
 }
 
+pub fn steam_run_wrapper() -> Result<PathBuf, STError> {
+    let run = match env::var("STEAM_RUN_WRAPPER") {
+        Ok(run) => run,
+        _ => "~/.steam/bin32/steam-runtime/run.sh".to_string(),
+    };
+    let run = shellexpand::full(&run)?.to_string();
+    let run = Path::new(&run);
+
+    if run.exists() {
+        Ok(run.to_path_buf())
+    } else {
+        Err(STError::Problem(format!(
+            "Run wrapper doesn't exist: {:?}",
+            run
+        )))
+    }
+}
+
 pub fn executable_join(executable: &str, installdir: &str) -> Result<PathBuf, STError> {
     let installdir = Path::new(installdir);
     let executable = Path::new(executable);

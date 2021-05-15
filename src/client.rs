@@ -3,7 +3,7 @@ use crate::interface::*;
 use crate::util::{
     error::STError,
     parser::*,
-    paths::{cache_location, executable_exists, install_script_location},
+    paths::{cache_location, executable_exists, install_script_location, steam_run_wrapper},
 };
 
 use std::process;
@@ -49,7 +49,7 @@ fn execute(
                         Some(ref acct) => acct.account.clone(),
                         _ => "".to_string(),
                     };
-                    queue.push_front(Command::Cli(format!("login {}\n", user).to_string()));
+                    queue.push_front(Command::Cli(format!("login {}\n", user)));
                 }
                 Some(Command::Install(id)) => {
                     if let Some(ref acct) = account {
@@ -71,15 +71,33 @@ fn execute(
                 }
                 Some(Command::Run(launchables)) => {
                     for launchable in launchables {
+                        // TODO: Check if steam is currently running.
+                        // IF steam is running (we can check for port tcp/57343), then
+                        //   SteamCmd::script("login, app_run <>, quit")
+                        // otherwise proceed as follows.
                         if let Ok(path) = executable_exists(&launchable.executable) {
-                            let command = match launchable.platform {
-                                Platform::Windows => format!("wine {:?}", path),
-                                _ => path.to_str().unwrap_or("").to_string(),
+                            let mut command = match launchable.platform {
+                                Platform::Windows => vec![
+                                    "wine".to_string(),
+                                    path.into_os_string().into_string().unwrap(),
+                                ],
+                                _ => vec![path.to_str().unwrap_or("").to_string()],
                             };
-                            let args = launchable.arguments.clone();
+                            let mut args = launchable
+                                .arguments
+                                .clone()
+                                .split(' ')
+                                .map(|x| x.to_string())
+                                .collect::<Vec<String>>();
+                            command.append(&mut args);
+                            let entry = match steam_run_wrapper() {
+                                Ok(wrapper) => wrapper.into_os_string().into_string().unwrap(),
+                                Err(STError::Problem(_)) => command.remove(0),
+                                Err(err) => return Err(err), // unwrap and rewrap to explicitly note this is an err.
+                            };
                             thread::spawn(move || {
-                                process::Command::new(command)
-                                    .args(args.split(' '))
+                                process::Command::new(entry)
+                                    .args(command)
                                     .stdout(process::Stdio::null())
                                     .spawn()
                                     .unwrap();
@@ -323,7 +341,7 @@ mod tests {
         let (tx1, receiver) = channel();
         let (sender, rx2) = channel();
         Client::start_process(Arc::new(Mutex::new(State::LoggedOut)), tx1, rx2);
-        let pollution = String::from("pollution ™️ ö ®Ø 天 🎉 Maxisâ¢\n");
+        let pollution = String::from("pollution ™️ ö ®Ø 天 🎉 Maxisâ¢\n");
         sender
             .send(Command::Cli(pollution.clone()))
             .expect("Fails to send message...");
