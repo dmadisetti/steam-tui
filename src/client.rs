@@ -257,6 +257,9 @@ fn execute(
                             return Ok(());
                         }
                         _ => {
+                            // Send back response for debugging reasons.
+                            sender.send(response.to_string())?;
+                            // Fail since unknown commands should never be executed.
                             return Err(STError::Problem(format!(
                                 "Unknown command sent {}",
                                 response
