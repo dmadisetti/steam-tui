@@ -165,6 +165,8 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                                 app.mode = Mode::Searched;
                             }
                             app.user = config.default_user.clone();
+                        } else {
+                            break;
                         }
                     }
                     Key::Char('\n') => {

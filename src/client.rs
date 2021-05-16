@@ -9,7 +9,7 @@ use crate::util::{
     },
 };
 
-use port_scanner::local_port_available;
+use port_scanner::scan_port;
 
 use std::process;
 use std::sync::Arc;
@@ -46,26 +46,40 @@ fn execute(
     // downloading, show satus.
     let mut downloading: HashSet<i32> = HashSet::new();
 
+    // Cleanup the steam process if steam-tui quits.
+    let mut cleanup: Option<Sender<bool>> = None;
+
     loop {
         queue.push_front(receiver.recv()?);
         loop {
             match queue.pop_back() {
                 None => break,
                 Some(Command::StartClient) => {
-                    if !local_port_available(STEAM_PORT) {
+                    if !scan_port(STEAM_PORT) {
+                        let (sender, termination) = channel();
+                        cleanup = Some(sender);
                         thread::spawn(move || {
-                            process::Command::new("steam")
+                            let mut child = process::Command::new("steam")
                                 .args(vec![
                                     "-console",
                                     "-dev",
                                     "-nofriendsui",
                                     "-no-browser",
-                                    "+open \"steam://\"",
+                                    "+open",
+                                    "steam://",
                                 ])
                                 .stdout(process::Stdio::null())
                                 .stderr(process::Stdio::null())
                                 .spawn()
                                 .unwrap();
+
+                            // TODO: Currently doesn't kill all grand-children processes.
+                            while let Ok(terminate) = termination.recv() {
+                                if terminate {
+                                    let _ = child.kill();
+                                    break;
+                                }
+                            }
                         });
                     }
                 }
@@ -101,7 +115,7 @@ fn execute(
                     // IF steam is running (we can check for port tcp/57343), then
                     //   SteamCmd::script("login, app_run <>, quit")
                     // otherwise attempt to launch normally.
-                    if local_port_available(STEAM_PORT) {
+                    if scan_port(STEAM_PORT) {
                         if let Some(ref acct) = account {
                             let name = acct.account.clone();
                             thread::spawn(move || {
@@ -149,6 +163,7 @@ fn execute(
                         }
                     }
                 }
+                // Execute and handles response to various SteamCmd Commands.
                 Some(Command::Cli(line)) => {
                     cmd.write(&line)?;
                     let mut updated = 0;
@@ -234,12 +249,22 @@ fn execute(
                         ["app_status", _id] => {
                             sender.send(response.to_string())?;
                         }
-                        ["quit"] => return Ok(()),
-                        _ => {
+                        ["quit"] => {
+                            if let Some(cleanup) = cleanup {
+                                let _ = cleanup.send(true);
+                            }
                             sender.send(response.to_string())?;
+                            return Ok(());
+                        }
+                        _ => {
+                            return Err(STError::Problem(format!(
+                                "Unknown command sent {}",
+                                response
+                            )));
                         }
                     }
 
+                    // If in Loading state, update progress.
                     let mut state = state.lock()?;
                     if let State::Loaded(o, e) = *state {
                         updated += o;
@@ -356,7 +381,8 @@ impl Client {
         GameStatus::new(&receiver.recv()?)
     }
 
-    /// Extracts games from cached location.
+    /// Started up a headless steam instance in the background so that games can be launched
+    /// through steamcmd.
     pub fn start_client(&self) -> Result<(), STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::StartClient)?;
@@ -396,6 +422,8 @@ impl Drop for Client {
             .lock()
             .expect("In destructor, error handling is meaningless");
         let _ = sender.send(Command::Cli(String::from("quit\n")));
+        let receiver = self.receiver.lock().expect("In destructor");
+        let _ = receiver.recv();
     }
 }
 #[cfg(test)]
