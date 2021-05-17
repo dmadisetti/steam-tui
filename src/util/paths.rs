@@ -88,12 +88,17 @@ pub fn executable_exists(executable: &str) -> Result<PathBuf, STError> {
     }
 }
 
-pub fn install_script_location(login: String, id: i32) -> Result<PathBuf, STError> {
+fn script_location(file: &Path, contents: &str) -> Result<PathBuf, STError> {
     let dir = config_directory()?;
-    let script_path = &format!("{}.install", id);
-    let script_path = Path::new(script_path);
-    let script_path = dir.join(script_path);
+    let script_path = dir.join(file);
     let mut f = fs::File::create(&script_path)?;
+    f.write_all(contents.as_bytes())?;
+    Ok(script_path)
+}
+
+pub fn install_script_location(login: String, id: i32) -> Result<PathBuf, STError> {
+    let file = &format!("{}.install", id);
+    let file = Path::new(file);
     let contents = format!(
         r#"
 login {}
@@ -102,8 +107,22 @@ quit
 "#,
         login, id
     );
-    f.write_all(contents.as_bytes())?;
-    Ok(script_path)
+    script_location(file, &contents)
+}
+
+pub fn launch_script_location(login: String, id: i32) -> Result<PathBuf, STError> {
+    let file = &format!("{}.launch", id);
+    let file = Path::new(file);
+    let contents = format!(
+        r#"
+login {}
+app_update "{}" -validate
+app_run {}
+quit
+"#,
+        login, id, id
+    );
+    script_location(file, &contents)
 }
 
 pub fn config_location() -> Result<PathBuf, STError> {

@@ -3,8 +3,13 @@ use crate::interface::*;
 use crate::util::{
     error::STError,
     parser::*,
-    paths::{cache_location, executable_exists, install_script_location, steam_run_wrapper},
+    paths::{
+        cache_location, executable_exists, install_script_location, launch_script_location,
+        steam_run_wrapper,
+    },
 };
+
+use port_scanner::scan_port;
 
 use std::process;
 use std::sync::Arc;
@@ -15,6 +20,8 @@ use std::fs;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Mutex;
 use std::thread;
+
+const STEAM_PORT: u16 = 57343;
 
 #[derive(PartialEq, Clone)]
 pub enum State {
@@ -34,13 +41,48 @@ fn execute(
     let mut queue = VecDeque::new();
     let mut games = Vec::new();
     let mut account: Option<Account> = None;
+
+    // TODO(#20) Pass in Arcs for download status into threads. If requested state is in
+    // downloading, show satus.
     let mut downloading: HashSet<i32> = HashSet::new();
+
+    // Cleanup the steam process if steam-tui quits.
+    let mut cleanup: Option<Sender<bool>> = None;
 
     loop {
         queue.push_front(receiver.recv()?);
         loop {
             match queue.pop_back() {
                 None => break,
+                Some(Command::StartClient) => {
+                    if !scan_port(STEAM_PORT) {
+                        let (sender, termination) = channel();
+                        cleanup = Some(sender);
+                        thread::spawn(move || {
+                            let mut child = process::Command::new("steam")
+                                .args(vec![
+                                    "-console",
+                                    "-dev",
+                                    "-nofriendsui",
+                                    "-no-browser",
+                                    "+open",
+                                    "steam://",
+                                ])
+                                .stdout(process::Stdio::null())
+                                .stderr(process::Stdio::null())
+                                .spawn()
+                                .unwrap();
+
+                            // TODO: Currently doesn't kill all grand-children processes.
+                            while let Ok(terminate) = termination.recv() {
+                                if terminate {
+                                    let _ = child.kill();
+                                    break;
+                                }
+                            }
+                        });
+                    }
+                }
                 Some(Command::Restart) => {
                     let mut state = state.lock()?;
                     *state = State::LoggedOut;
@@ -69,12 +111,26 @@ fn execute(
                         });
                     };
                 }
-                Some(Command::Run(launchables)) => {
+                Some(Command::Run(id, launchables)) => {
+                    // IF steam is running (we can check for port tcp/57343), then
+                    //   SteamCmd::script("login, app_run <>, quit")
+                    // otherwise attempt to launch normally.
+                    if scan_port(STEAM_PORT) {
+                        if let Some(ref acct) = account {
+                            let name = acct.account.clone();
+                            thread::spawn(move || {
+                                SteamCmd::script(
+                                    launch_script_location(name, id)
+                                        .unwrap()
+                                        .to_str()
+                                        .expect("Launch thread failed."),
+                                )
+                                .unwrap();
+                            });
+                            break;
+                        }
+                    }
                     for launchable in launchables {
-                        // TODO: Check if steam is currently running.
-                        // IF steam is running (we can check for port tcp/57343), then
-                        //   SteamCmd::script("login, app_run <>, quit")
-                        // otherwise proceed as follows.
                         if let Ok(path) = executable_exists(&launchable.executable) {
                             let mut command = match launchable.platform {
                                 Platform::Windows => vec![
@@ -99,6 +155,7 @@ fn execute(
                                 process::Command::new(entry)
                                     .args(command)
                                     .stdout(process::Stdio::null())
+                                    .stderr(process::Stdio::null())
                                     .spawn()
                                     .unwrap();
                             });
@@ -106,6 +163,7 @@ fn execute(
                         }
                     }
                 }
+                // Execute and handles response to various SteamCmd Commands.
                 Some(Command::Cli(line)) => {
                     cmd.write(&line)?;
                     let mut updated = 0;
@@ -191,12 +249,25 @@ fn execute(
                         ["app_status", _id] => {
                             sender.send(response.to_string())?;
                         }
-                        ["quit"] => return Ok(()),
-                        _ => {
+                        ["quit"] => {
+                            if let Some(cleanup) = cleanup {
+                                let _ = cleanup.send(true);
+                            }
                             sender.send(response.to_string())?;
+                            return Ok(());
+                        }
+                        _ => {
+                            // Send back response for debugging reasons.
+                            sender.send(response.to_string())?;
+                            // Fail since unknown commands should never be executed.
+                            return Err(STError::Problem(format!(
+                                "Unknown command sent {}",
+                                response
+                            )));
                         }
                     }
 
+                    // If in Loading state, update progress.
                     let mut state = state.lock()?;
                     if let State::Loaded(o, e) = *state {
                         updated += o;
@@ -218,6 +289,7 @@ fn execute(
     }
 }
 
+/// Manages and interfaces with SteamCmd threads.
 pub struct Client {
     receiver: Mutex<Receiver<String>>,
     sender: Mutex<Sender<Command>>,
@@ -225,6 +297,7 @@ pub struct Client {
 }
 
 impl Client {
+    /// Spawns a StemCmd process to interface with.
     pub fn new() -> Client {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
@@ -238,6 +311,7 @@ impl Client {
         client
     }
 
+    /// Ensures `State` is `State::LoggedIn`.
     pub fn is_logged_in(&self) -> Result<bool, STError> {
         Ok(self.get_state()? == State::LoggedIn)
     }
@@ -246,24 +320,30 @@ impl Client {
         Ok(self.state.lock()?.clone())
     }
 
+    /// Runs installation script for the provided game id.
     pub fn install(&self, id: i32) -> Result<(), STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::Install(id))?;
         Ok(())
     }
 
+    /// Quits previous SteamCmd instance, and spawns a new one. This can be useful for getting more
+    /// state data. Old processes fail to update due to short comings in SteamCmd.
     pub fn restart(&self) -> Result<(), STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::Restart)?;
         Ok(())
     }
 
-    pub fn run(&self, launchables: &[Launch]) -> Result<(), STError> {
+    /// Launches the provided game id using 'app_run' in steemcmd, or the raw executable depending
+    /// on the Steam client state.
+    pub fn run(&self, id: i32, launchables: &[Launch]) -> Result<(), STError> {
         let sender = self.sender.lock()?;
-        sender.send(Command::Run(launchables.to_owned().to_vec()))?;
+        sender.send(Command::Run(id, launchables.to_owned().to_vec()))?;
         Ok(())
     }
 
+    /// Attempts to login the provided user string.
     pub fn login(&self, user: &str) -> Result<(), STError> {
         let mut state = self.state.lock()?;
         *state = State::LoggedOut;
@@ -272,6 +352,15 @@ impl Client {
         Ok(())
     }
 
+    /// Starts off the process of parsing all games from SteamCmd. First `State` is set to be in an
+    /// unloaded state for `State::Loaded`.  The process start by calling 'licenses_print' which
+    /// then extracts packageIDs, and calls 'package_info_print' for each package. This in turn
+    /// extracts appIDs, and gets app particular data by calling 'app_info_print' and binds it to a
+    /// `Game` object. When all data is loaded, the games are dumped to a file and the state is
+    /// changed to `State::LoggedIn` indicating that all data has been extracted and can be
+    /// presented.
+    /// TODO(#8): Check for cached games prior to reloading everything, unless explicitly
+    /// restarted.
     pub fn load_games(&self) -> Result<(), STError> {
         let mut state = self.state.lock()?;
         *state = State::Loaded(0, -1);
@@ -280,17 +369,27 @@ impl Client {
         Ok(())
     }
 
+    /// Extracts games from cached location.
     pub fn games(&self) -> Result<Vec<Game>, STError> {
         let db_content = fs::read_to_string(cache_location()?)?;
         let parsed: Vec<Game> = serde_json::from_str(&db_content)?;
         Ok(parsed)
     }
 
+    /// Binds data from 'app_status' to a `GameStatus` object.
     pub fn status(&self, id: i32) -> Result<GameStatus, STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::Cli(format!("app_status {}\n", id)))?;
         let receiver = self.receiver.lock()?;
         GameStatus::new(&receiver.recv()?)
+    }
+
+    /// Started up a headless steam instance in the background so that games can be launched
+    /// through steamcmd.
+    pub fn start_client(&self) -> Result<(), STError> {
+        let sender = self.sender.lock()?;
+        sender.send(Command::StartClient)?;
+        Ok(())
     }
 
     fn start_process(
@@ -326,6 +425,8 @@ impl Drop for Client {
             .lock()
             .expect("In destructor, error handling is meaningless");
         let _ = sender.send(Command::Cli(String::from("quit\n")));
+        let receiver = self.receiver.lock().expect("In destructor");
+        let _ = receiver.recv();
     }
 }
 #[cfg(test)]

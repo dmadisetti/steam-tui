@@ -92,7 +92,8 @@ impl Datum {
 pub enum Command {
     Cli(String),
     Install(i32),
-    Run(Vec<Launch>),
+    Run(i32, Vec<Launch>),
+    StartClient,
     Restart,
 }
 
@@ -157,7 +158,6 @@ mod tests {
             .maybe_nest()
             .expect("Failed to properly parse");
         assert_eq!(inner.len(), 0);
-        eprintln!("{:?}", map);
         let complex = map
             .get(&"otherØ 天 🎉".to_string())
             .unwrap()

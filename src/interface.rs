@@ -290,7 +290,7 @@ impl Iterator for SteamCmd {
 
 impl Drop for SteamCmd {
     fn drop(&mut self) {
-        self.write(&String::from("quit\n"))
-            .expect("Stopping anyway.");
+        // Failure is fine, because stopping anyway.
+        let _ = self.write(&String::from("quit\n"));
     }
 }
