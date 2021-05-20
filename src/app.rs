@@ -180,7 +180,7 @@ impl App {
     pub fn build_help() -> Paragraph<'static> {
         App::build_infobox(
             "Help".to_string(),
-            "[/] Search | [d]ownload  | [l]ogin | [Enter]xecute | Up (k, w) | Down (j, s) | [q]uit"
+            "[/] Search | [d]ownload  | [l]ogin | [Enter]xecute | Up (k, w) | Down (j, s) | [q]uit | [Space]team"
                 .to_string(),
             Alignment::Left,
         )

@@ -10,7 +10,7 @@ Methodology informed by [steam-cli](https://github.com/berenm/steam-cli).
   <img width="600" alt="Example of rules_euler in action" src="screenshot.png">
 </p>
 
-## usage
+## Usage
 
 Login with `steamcmd` first to cache your credentials (don't trust some random app with your passwords):
 ```bash
@@ -19,6 +19,10 @@ steamcmd
 # Steam> quit
 ```
 Launch the binary `steam-tui`, and rejoice :tada:. Help is in the client.
+
+Unable to launch games? Pressing space will start a bare-bones steam client (no
+graphics) in the background and will let you launch games that need steam
+libraries or have some sort of DRM.
 
 ## Requirements
 
@@ -42,7 +46,7 @@ time into this.
 
 ## Missing Features
 
-- Real time download updates
+- Real time download updates [#20](https://github.com/dmadisetti/steam-tui/issues/20)
 - Real time running game updates
-- Filtering for DLCs etc..
-- Automatic icon downloads
+- Filtering for DLCs etc.. [#11](https://github.com/dmadisetti/steam-tui/issues/11)
+- Automatic icon downloads [#22](https://github.com/dmadisetti/steam-tui/issues/22)
