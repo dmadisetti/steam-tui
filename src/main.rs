@@ -45,7 +45,9 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let events = Events::new();
     let client = Client::new();
 
-    client.login(&app.user)?;
+    if !app.user.is_empty() {
+        client.login(&app.user)?;
+    }
     let mut game_list: StatefulList<Game> = StatefulList::new();
     game_list.restart();
 
@@ -170,9 +172,13 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                     Key::Char('\n') => {
-                        app.mode = Mode::Loading;
-                        config.default_user = app.user.clone();
-                        client.login(&app.user)?;
+                        let mut user = app.user.clone();
+                        user.retain(|c| !c.is_whitespace());
+                        if !user.is_empty() {
+                            app.mode = Mode::Loading;
+                            config.default_user = user;
+                            client.login(&app.user)?;
+                        }
                     }
                     Key::Backspace => {
                         app.user.pop();

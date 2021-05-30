@@ -91,7 +91,7 @@ fn execute(
                         Some(ref acct) => acct.account.clone(),
                         _ => "".to_string(),
                     };
-                    queue.push_front(Command::Cli(format!("login {}\n", user)));
+                    queue.push_front(Command::Cli(format!("login {}", user)));
                 }
                 Some(Command::Install(id)) => {
                     if let Some(ref acct) = account {
@@ -176,7 +176,7 @@ fn execute(
                                 let mut state = state.lock()?;
                                 *state = State::Failed;
                             } else {
-                                queue.push_front(Command::Cli("info\n".to_string()));
+                                queue.push_front(Command::Cli("info".to_string()));
                             }
                         }
                         ["info"] => {
@@ -205,7 +205,7 @@ fn execute(
                             updated += total as i32;
                             for key in keys {
                                 queue.push_front(Command::Cli(format!(
-                                    "package_info_print {}\n",
+                                    "package_info_print {}",
                                     key
                                 )));
                             }
@@ -224,7 +224,7 @@ fn execute(
                                                 let key = id.parse::<i32>().unwrap_or(-1);
                                                 if key >= 0 {
                                                     queue.push_front(Command::Cli(format!(
-                                                        "app_info_print {}\n",
+                                                        "app_info_print {}",
                                                         key
                                                     )));
                                                 }
@@ -345,10 +345,15 @@ impl Client {
 
     /// Attempts to login the provided user string.
     pub fn login(&self, user: &str) -> Result<(), STError> {
+        if user.is_empty() {
+            return Err(STError::Problem(
+                "Blank string. Requires user to log in.".to_string(),
+            ));
+        }
         let mut state = self.state.lock()?;
         *state = State::LoggedOut;
         let sender = self.sender.lock()?;
-        sender.send(Command::Cli(format!("login {}\n", user)))?;
+        sender.send(Command::Cli(format!("login {}", user)))?;
         Ok(())
     }
 
@@ -365,7 +370,7 @@ impl Client {
         let mut state = self.state.lock()?;
         *state = State::Loaded(0, -1);
         let sender = self.sender.lock()?;
-        sender.send(Command::Cli(String::from("licenses_print\n")))?;
+        sender.send(Command::Cli(String::from("licenses_print")))?;
         Ok(())
     }
 
@@ -379,7 +384,7 @@ impl Client {
     /// Binds data from 'app_status' to a `GameStatus` object.
     pub fn status(&self, id: i32) -> Result<GameStatus, STError> {
         let sender = self.sender.lock()?;
-        sender.send(Command::Cli(format!("app_status {}\n", id)))?;
+        sender.send(Command::Cli(format!("app_status {}", id)))?;
         let receiver = self.receiver.lock()?;
         GameStatus::new(&receiver.recv()?)
     }
@@ -424,7 +429,7 @@ impl Drop for Client {
             .sender
             .lock()
             .expect("In destructor, error handling is meaningless");
-        let _ = sender.send(Command::Cli(String::from("quit\n")));
+        let _ = sender.send(Command::Cli(String::from("quit")));
         let receiver = self.receiver.lock().expect("In destructor");
         let _ = receiver.recv();
     }
@@ -432,6 +437,7 @@ impl Drop for Client {
 #[cfg(test)]
 mod tests {
     use crate::client::{Client, State};
+    use crate::util::error::STError;
     use crate::util::parser::Command;
     use std::sync::mpsc::channel;
     use std::sync::Arc;
@@ -442,7 +448,7 @@ mod tests {
         let (tx1, receiver) = channel();
         let (sender, rx2) = channel();
         Client::start_process(Arc::new(Mutex::new(State::LoggedOut)), tx1, rx2);
-        let pollution = String::from("pollution ™️ ö ®Ø 天 🎉 Maxisâ¢\n");
+        let pollution = String::from("pollution ™️ ö ®Ø 天 🎉 Maxisâ¢\n\n\n\nquit\nbash");
         sender
             .send(Command::Cli(pollution.clone()))
             .expect("Fails to send message...");
@@ -450,5 +456,31 @@ mod tests {
             .recv()
             .expect("Channel dies")
             .contains(&"pollution".to_string()));
+    }
+
+    #[test]
+    fn test_implicit_line_ending() {
+        let (tx1, receiver) = channel();
+        let (sender, rx2) = channel();
+        Client::start_process(Arc::new(Mutex::new(State::LoggedOut)), tx1, rx2);
+        let message = String::from("doesn't hang");
+        sender
+            .send(Command::Cli(message.clone()))
+            .expect("Fails to send message...");
+        assert!(&receiver
+            .recv()
+            .expect("Channel dies")
+            .contains(&"Command not found: doesn't".to_string()));
+    }
+
+    #[test]
+    fn test_blank_login() {
+        let client = Client::new();
+        let result = client.login("");
+        if let Err(STError::Problem(expected)) = result {
+            assert!(expected.contains(&"Blank".to_string()));
+            return;
+        }
+        panic!("Failed to unwrap")
     }
 }

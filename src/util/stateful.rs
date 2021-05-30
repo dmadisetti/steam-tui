@@ -65,28 +65,40 @@ impl<T: Named> StatefulList<T> {
         let i = match self.state.selected() {
             Some(i) => {
                 if i >= self.activated().len() - 1 {
-                    0
+                    Some(0)
                 } else {
-                    i + 1
+                    Some(i + 1)
                 }
             }
-            None => 0,
+            None => {
+                if !self.activated().is_empty() {
+                    Some(0)
+                } else {
+                    None
+                }
+            }
         };
-        self.state.select(Some(i));
+        self.state.select(i);
     }
 
     pub fn previous(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.activated().len() - 1
+                    Some(self.activated().len() - 1)
                 } else {
-                    i - 1
+                    Some(i - 1)
                 }
             }
-            None => 0,
+            None => {
+                if !self.activated().is_empty() {
+                    Some(0)
+                } else {
+                    None
+                }
+            }
         };
-        self.state.select(Some(i));
+        self.state.select(i);
     }
     pub fn unselect(&mut self) {
         self.state.select(None);

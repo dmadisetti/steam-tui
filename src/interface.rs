@@ -270,6 +270,9 @@ impl SteamCmd {
         ])
     }
     pub fn write(&mut self, line: &str) -> Result<(), STError> {
+        // Strip line endings
+        let line: String = line.chars().filter(|&c| !"\n\r".contains(c)).collect();
+        let line = format!("{}\n", line);
         self.stdin.write_all(line.as_bytes())?;
         Ok(())
     }
