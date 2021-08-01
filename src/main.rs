@@ -8,7 +8,7 @@ use tui::{backend::TermionBackend, layout::Rect, Terminal};
 use tui_image_rgba_updated::{ColorMode, Image};
 
 use steam_tui::util::event::{Event, Events};
-use steam_tui::util::image::{update_img};
+use steam_tui::util::image::update_img;
 use steam_tui::util::stateful::StatefulList;
 
 use steam_tui::app::{App, Mode};

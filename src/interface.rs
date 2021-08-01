@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader, Write};
 
 use serde::{Deserialize, Serialize};
 
-const STEAM_CDN : &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/";
+const STEAM_CDN: &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/";
 
 pub struct GameStatus {
     pub state: String,
@@ -171,7 +171,9 @@ impl Game {
                             },
                         },
                         icon_url: match common.get("clienticon") {
-                            Some(Datum::Value(hash)) => Some(format!("{}/{}/{}.ico", STEAM_CDN, key, hash)),
+                            Some(Datum::Value(hash)) => {
+                                Some(format!("{}/{}/{}.ico", STEAM_CDN, key, hash))
+                            }
                             _ => None,
                         },
                     };

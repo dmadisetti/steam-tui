@@ -4,7 +4,9 @@ use crate::util::paths::{icon_exists, icon_save};
 
 use crate::interface::Game;
 
-pub fn update_img(selected: &Option<&Game>) -> Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>> {
+pub fn update_img(
+    selected: &Option<&Game>,
+) -> Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>> {
     if let Some(game) = selected {
         if let Ok(path) = icon_exists(game.id) {
             if let Some(path) = path.to_str() {
@@ -30,4 +32,3 @@ pub fn update_img(selected: &Option<&Game>) -> Option<image::ImageBuffer<image::
     }
     None
 }
-

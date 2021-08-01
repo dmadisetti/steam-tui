@@ -1,7 +1,7 @@
 use crate::util::error::STError;
 
-use std::io::Write;
 use std::fs::File;
+use std::io::Write;
 use std::{
     env, fs, io,
     path::{Path, PathBuf},
@@ -14,7 +14,7 @@ fn touch(path: &Path) -> io::Result<()> {
     }
 }
 
-fn mkdir(dir:String) -> Result<PathBuf, STError> {
+fn mkdir(dir: String) -> Result<PathBuf, STError> {
     let dir = shellexpand::full(&dir)?.to_string();
     let dir = Path::new(&dir);
 
@@ -29,7 +29,6 @@ pub fn cache_directory() -> Result<PathBuf, STError> {
     };
     mkdir(dir)
 }
-
 
 pub fn config_directory() -> Result<PathBuf, STError> {
     let dir = match env::var("STEAM_TUI_DIR") {
@@ -96,10 +95,7 @@ pub fn icon_exists(id: i32) -> Result<PathBuf, STError> {
     if icon.exists() {
         Ok(icon)
     } else {
-        Err(STError::Problem(format!(
-            "Icon doesn't exist: {:?}",
-            icon
-        )))
+        Err(STError::Problem(format!("Icon doesn't exist: {:?}", icon)))
     }
 }
 
