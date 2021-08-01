@@ -1,6 +1,7 @@
 use crate::util::error::STError;
 
 use std::io::Write;
+use std::fs::File;
 use std::{
     env, fs, io,
     path::{Path, PathBuf},
@@ -22,9 +23,9 @@ fn mkdir(dir:String) -> Result<PathBuf, STError> {
 }
 
 pub fn cache_directory() -> Result<PathBuf, STError> {
-    let dir = match env::var("STEAM_TUI_DIR") {
+    let dir = match env::var("STEAM_TUI_CACHE_DIR") {
         Ok(dir) => dir,
-        _ => "~/.config/steam-tui".to_string(),
+        _ => "~/.cache/steam-tui".to_string(),
     };
     mkdir(dir)
 }
@@ -34,6 +35,22 @@ pub fn config_directory() -> Result<PathBuf, STError> {
     let dir = match env::var("STEAM_TUI_DIR") {
         Ok(dir) => dir,
         _ => "~/.config/steam-tui".to_string(),
+    };
+    mkdir(dir)
+}
+
+pub fn script_directory() -> Result<PathBuf, STError> {
+    let dir = match env::var("STEAM_TUI_SCRIPT_DIR") {
+        Ok(dir) => dir,
+        _ => format!("{}/scripts", cache_directory()?.as_path().display()),
+    };
+    mkdir(dir)
+}
+
+pub fn icon_directory() -> Result<PathBuf, STError> {
+    let dir = match env::var("STEAM_TUI_ICON_DIR") {
+        Ok(dir) => dir,
+        _ => format!("{}/icons", cache_directory()?.as_path().display()),
     };
     mkdir(dir)
 }
@@ -71,19 +88,29 @@ pub fn executable_join(executable: &str, installdir: &str) -> Result<PathBuf, ST
     Ok(script_path)
 }
 
-pub fn image_exists(id: i32) -> Result<PathBuf, STError> {
-    let dir = icon_location()?;
-    let image = &format!("{}.ico", id);
-    let image = Path::new(image);
-    let image = dir.join(image);
-    if image.exists() {
-        Ok(image)
+pub fn icon_exists(id: i32) -> Result<PathBuf, STError> {
+    let dir = icon_directory()?;
+    let icon = &format!("{}.ico", id);
+    let icon = Path::new(icon);
+    let icon = dir.join(icon);
+    if icon.exists() {
+        Ok(icon)
     } else {
         Err(STError::Problem(format!(
-            "Image doesn't exist: {:?}",
-            image
+            "Icon doesn't exist: {:?}",
+            icon
         )))
     }
+}
+
+pub fn icon_save(id: i32, icon: &[u8]) -> Result<(), STError> {
+    let dir = icon_directory()?;
+    let icon_path = &format!("{}.ico", id);
+    let icon_path = Path::new(icon_path);
+    let icon_path = dir.join(icon_path);
+    let mut file = File::create(icon_path)?;
+    file.write_all(icon)?;
+    Ok(())
 }
 
 pub fn executable_exists(executable: &str) -> Result<PathBuf, STError> {
@@ -98,7 +125,7 @@ pub fn executable_exists(executable: &str) -> Result<PathBuf, STError> {
 }
 
 fn script_location(file: &Path, contents: &str) -> Result<PathBuf, STError> {
-    let dir = config_directory()?;
+    let dir = script_directory()?;
     let script_path = dir.join(file);
     let mut f = fs::File::create(&script_path)?;
     f.write_all(contents.as_bytes())?;
@@ -140,14 +167,6 @@ pub fn config_location() -> Result<PathBuf, STError> {
     let config_path = dir.join(config_path);
     touch(&config_path)?;
     Ok(config_path)
-}
-
-pub fn icon_location() -> Result<PathBuf, STError> {
-    let dir = cache_directory()?;
-    let icon_path = Path::new("icons/");
-    let icon_path = dir.join(icon_path);
-    fs::create_dir_all(&icon_path)?;
-    Ok(icon_path)
 }
 
 pub fn cache_location() -> Result<PathBuf, STError> {

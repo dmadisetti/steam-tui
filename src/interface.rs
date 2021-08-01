@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader, Write};
 
 use serde::{Deserialize, Serialize};
 
-const STEAM_CDN : &'static str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/";
+const STEAM_CDN : &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/";
 
 pub struct GameStatus {
     pub state: String,
@@ -26,8 +26,7 @@ impl GameStatus {
                 ["disk", disk] => Some(disk),
                 _ => None,
             })
-            .filter(|d| d.is_some())
-            .map(|d| d.unwrap())
+            .flatten()
             .collect::<Vec<&str>>();
         Ok(GameStatus {
             state: data.get(0).unwrap_or(&"").to_string(),
