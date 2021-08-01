@@ -8,26 +8,13 @@ use tui::{backend::TermionBackend, layout::Rect, Terminal};
 use tui_image_rgba_updated::{ColorMode, Image};
 
 use steam_tui::util::event::{Event, Events};
-use steam_tui::util::paths::image_exists;
+use steam_tui::util::image::update_img;
 use steam_tui::util::stateful::StatefulList;
 
 use steam_tui::app::{App, Mode};
 use steam_tui::client::{Client, State};
 use steam_tui::config::Config;
 use steam_tui::interface::Game;
-
-fn update_img(selected: &Option<&Game>) -> Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>> {
-    if let Some(game) = selected {
-        if let Ok(path) = image_exists(game.id) {
-            if let Some(path) = path.to_str() {
-                if let Ok(data) = image::open(path) {
-                    return Some(data.to_rgba());
-                }
-            }
-        }
-    }
-    None
-}
 
 fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let stdout = io::stdout().into_raw_mode()?;

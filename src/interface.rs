@@ -8,6 +8,8 @@ use std::io::{BufRead, BufReader, Write};
 
 use serde::{Deserialize, Serialize};
 
+const STEAM_CDN: &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/";
+
 pub struct GameStatus {
     pub state: String,
     pub installdir: String,
@@ -24,8 +26,7 @@ impl GameStatus {
                 ["disk", disk] => Some(disk),
                 _ => None,
             })
-            .filter(|d| d.is_some())
-            .map(|d| d.unwrap())
+            .flatten()
             .collect::<Vec<&str>>();
         Ok(GameStatus {
             state: data.get(0).unwrap_or(&"").to_string(),
@@ -132,6 +133,7 @@ pub struct Game {
     pub publisher: String,
     pub launch: Vec<Launch>,
     pub game_type: GameType,
+    pub icon_url: Option<String>,
 }
 impl Game {
     pub fn new(key: &str, lines: &mut std::str::Lines) -> Result<Game, STError> {
@@ -167,6 +169,12 @@ impl Game {
                                 },
                                 _ => GameType::Unknown,
                             },
+                        },
+                        icon_url: match common.get("clienticon") {
+                            Some(Datum::Value(hash)) => {
+                                Some(format!("{}/{}/{}.ico", STEAM_CDN, key, hash))
+                            }
+                            _ => None,
                         },
                     };
                     return Ok(game);
