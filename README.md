@@ -49,4 +49,4 @@ time into this.
 - Real time download updates [#20](https://github.com/dmadisetti/steam-tui/issues/20)
 - Real time running game updates
 - Filtering for DLCs etc.. [#11](https://github.com/dmadisetti/steam-tui/issues/11)
-- Better handling for Proton games [#17]
+- Better handling for Proton games [#17](https://github.com/dmadisetti/steam-tui/issues/17)
