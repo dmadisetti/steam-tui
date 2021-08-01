@@ -13,11 +13,7 @@ fn touch(path: &Path) -> io::Result<()> {
     }
 }
 
-pub fn config_directory() -> Result<PathBuf, STError> {
-    let dir = match env::var("STEAM_TUI_DIR") {
-        Ok(dir) => dir,
-        _ => "~/.config/steam-tui".to_string(),
-    };
+fn mkdir(dir:String) -> Result<PathBuf, STError> {
     let dir = shellexpand::full(&dir)?.to_string();
     let dir = Path::new(&dir);
 
@@ -25,16 +21,29 @@ pub fn config_directory() -> Result<PathBuf, STError> {
     Ok(dir.to_path_buf())
 }
 
+pub fn cache_directory() -> Result<PathBuf, STError> {
+    let dir = match env::var("STEAM_TUI_DIR") {
+        Ok(dir) => dir,
+        _ => "~/.config/steam-tui".to_string(),
+    };
+    mkdir(dir)
+}
+
+
+pub fn config_directory() -> Result<PathBuf, STError> {
+    let dir = match env::var("STEAM_TUI_DIR") {
+        Ok(dir) => dir,
+        _ => "~/.config/steam-tui".to_string(),
+    };
+    mkdir(dir)
+}
+
 pub fn steam_directory() -> Result<PathBuf, STError> {
     let dir = match env::var("STEAM_APP_DIR") {
         Ok(dir) => dir,
         _ => "~/.steam/steam/steamapps/common/".to_string(),
     };
-    let dir = shellexpand::full(&dir)?.to_string();
-    let dir = Path::new(&dir);
-
-    fs::create_dir_all(dir)?;
-    Ok(dir.to_path_buf())
+    mkdir(dir)
 }
 
 pub fn steam_run_wrapper() -> Result<PathBuf, STError> {
@@ -63,7 +72,7 @@ pub fn executable_join(executable: &str, installdir: &str) -> Result<PathBuf, ST
 }
 
 pub fn image_exists(id: i32) -> Result<PathBuf, STError> {
-    let dir = config_directory()?;
+    let dir = icon_location()?;
     let image = &format!("{}.ico", id);
     let image = Path::new(image);
     let image = dir.join(image);
@@ -133,10 +142,18 @@ pub fn config_location() -> Result<PathBuf, STError> {
     Ok(config_path)
 }
 
+pub fn icon_location() -> Result<PathBuf, STError> {
+    let dir = cache_directory()?;
+    let icon_path = Path::new("icons/");
+    let icon_path = dir.join(icon_path);
+    fs::create_dir_all(&icon_path)?;
+    Ok(icon_path)
+}
+
 pub fn cache_location() -> Result<PathBuf, STError> {
-    let dir = config_directory()?;
-    let config_path = Path::new("games.json");
-    let config_path = dir.join(config_path);
-    touch(&config_path)?;
-    Ok(config_path)
+    let dir = cache_directory()?;
+    let cache_path = Path::new("games.json");
+    let cache_path = dir.join(cache_path);
+    touch(&cache_path)?;
+    Ok(cache_path)
 }

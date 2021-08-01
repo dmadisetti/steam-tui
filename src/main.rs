@@ -2,6 +2,8 @@ extern crate steam_tui;
 
 use std::io;
 
+use reqwest;
+
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{backend::TermionBackend, layout::Rect, Terminal};
 
@@ -22,6 +24,15 @@ fn update_img(selected: &Option<&Game>) -> Option<image::ImageBuffer<image::Rgba
             if let Some(path) = path.to_str() {
                 if let Ok(data) = image::open(path) {
                     return Some(data.to_rgba());
+                }
+            }
+        } else if let Some(url) = &game.icon_url {
+            if let Ok(payload) = reqwest::blocking::get(url) {
+                if let Ok(bytes) = payload.bytes() {
+                    // cache here?
+                    if let Ok(data) = image::load_from_memory(&bytes) {
+                        return Some(data.to_rgba());
+                    }
                 }
             }
         }
