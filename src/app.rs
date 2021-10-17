@@ -247,6 +247,7 @@ impl App {
                     ("Homepage", &selected.homepage),
                     ("Developer", &selected.developer),
                     ("Publisher", &selected.publisher),
+                    ("ProtonDB", &selected.proton),
                 ] {
                     table.push(Row::new(vec![
                         Cell::from(Span::styled(

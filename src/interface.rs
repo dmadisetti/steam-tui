@@ -1,5 +1,8 @@
 use crate::util::{error::STError, parser::*, paths::executable_join, stateful::Named};
 
+use reqwest::Url;
+use exitfailure::ExitFailure;
+
 use std::cmp::Ordering;
 use std::process;
 
@@ -118,6 +121,28 @@ impl Launch {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct ProtonJson {
+  confidence: String,
+  score: f32,
+  tier: String,
+  total: i32,
+  trendingTier: String,
+  bestReportedTier: String
+}
+
+impl ProtonJson {
+    async fn get(id: i32) -> Result<Self, ExitFailure> {
+            let url = format!("https://www.protondb.com/api/v1/reports/summaries/{appId}.json",
+                                  appId = id.to_string());
+        let url = Url::parse(&*url)?;
+
+        let res = reqwest::get(url).await?.json::<ProtonJson>().await?;
+        Ok(res)
+    }
+}
+
+
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub enum GameType {
     Game,
@@ -131,12 +156,16 @@ pub struct Game {
     pub developer: String,
     pub homepage: String,
     pub publisher: String,
+    pub proton: String,
     pub launch: Vec<Launch>,
     pub game_type: GameType,
     pub icon_url: Option<String>,
 }
+
 impl Game {
-    pub fn new(key: &str, lines: &mut std::str::Lines) -> Result<Game, STError> {
+    #[tokio::main]
+    pub async fn new(key: &str, lines: &mut std::str::Lines) -> Result<Game, STError> {
+        let res = ProtonJson::get(key.parse::<i32>().unwrap_or(0)).await?.tier;
         let blank: Datum = Datum::Value("-".to_string());
         if let Datum::Nest(map) = parse(lines) {
             if let Some(map) = map.get(key) {
@@ -156,6 +185,7 @@ impl Game {
                         developer: extended.get("developer").unwrap_or(&blank).maybe_value()?,
                         homepage: extended.get("homepage").unwrap_or(&blank).maybe_value()?,
                         publisher: extended.get("publisher").unwrap_or(&blank).maybe_value()?,
+                        proton: res,
                         launch: Launch::get_launches(
                             &config.get("launch").cloned(),
                             config.get("installdir").unwrap_or(&blank).maybe_value()?,
