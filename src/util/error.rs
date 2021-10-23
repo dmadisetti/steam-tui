@@ -2,6 +2,7 @@ use crate::util::parser::Command;
 
 use shellexpand::LookupError;
 use std::error;
+use exitfailure::ExitFailure;
 use std::fmt;
 use std::fmt::Debug;
 use std::io;
@@ -20,6 +21,12 @@ pub enum STError {
 impl From<io::Error> for STError {
     fn from(err: io::Error) -> STError {
         STError::Io(err)
+    }
+}
+
+impl From<exitfailure::ExitFailure> for STError {
+    fn from(err: exitfailure::ExitFailure) -> STError {
+        STError::Problem(format!("{:?}", err))
     }
 }
 
