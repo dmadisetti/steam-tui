@@ -16,6 +16,14 @@ use steam_tui::client::{Client, State};
 use steam_tui::config::Config;
 use steam_tui::interface::Game;
 
+// why isn't this in stdlib for floats?
+fn min(a :f32, b :f32) -> f32 {
+    if a < b {
+        return a;
+    }
+    b
+}
+
 fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let stdout = io::stdout().into_raw_mode()?;
     let stdout = MouseTerminal::from(stdout);
@@ -75,12 +83,28 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
 
                     let (left, right) = App::render_games(&game_list, status);
                     let game_placement = game_layout.split(placement[0]);
-                    let image_placement = image_layout.split(Rect {
-                        x: game_placement[1].width + game_placement[1].x - 40,
-                        y: game_placement[1].height + game_placement[1].y - 20,
-                        width: 40,
-                        height: 20,
-                    });
+                    // Incorrect image placement leads to hard crash. Explicitly calculate bounds
+                    // here.
+                    let image_placement = {
+                        let offset_x = game_placement[1].width + game_placement[1].x;
+                        let offset_y = game_placement[1].height + game_placement[1].y;
+                        let (width, height) = {
+                            // 62% is also hardcoded in the window width, and 160 is totally
+                            // arbitrary, but the really large images look super goofy.
+                            // TODO: Allow for user adjustable widths
+                            let width = min((offset_x as f32) * 0.62, 160.0);
+                            // Height is counted by row, and there are 10 lines of info.
+                            let height = min((offset_y as f32) - 10.0, 80.0);
+                            // Take minium, but respect aspect ratio.
+                            (min(width, height*2.0) as u16, min(height, width/2.0) as u16)
+                        };
+                        image_layout.split(Rect {
+                            x: offset_x - width,
+                            y: offset_y - height,
+                            width,
+                            height,
+                        })
+                    };
 
                     frame.render_stateful_widget(left, game_placement[0], &mut game_list.state);
                     frame.render_widget(right, game_placement[1]);

@@ -2,6 +2,7 @@ use crate::interface::*;
 
 use crate::util::{
     error::STError,
+    log::log,
     parser::*,
     paths::{
         cache_location, executable_exists, install_script_location, launch_script_location,
@@ -101,13 +102,15 @@ fn execute(
                         downloading.insert(id);
                         let name = acct.account.clone();
                         thread::spawn(move || {
-                            SteamCmd::script(
-                                install_script_location(name, id)
+                            if let Err(err) = SteamCmd::script(
+                                install_script_location(name.clone(), id)
                                     .unwrap()
                                     .to_str()
                                     .expect("Installation thread failed."),
-                            )
-                            .unwrap();
+                            ) {
+                                let err = format!("{:?}", err);
+                                log!("Install script for:", name, "failed", err);
+                            }
                         });
                     };
                 }
@@ -119,13 +122,15 @@ fn execute(
                         if let Some(ref acct) = account {
                             let name = acct.account.clone();
                             thread::spawn(move || {
-                                SteamCmd::script(
-                                    launch_script_location(name, id)
+                                if let Err(err) = SteamCmd::script(
+                                    launch_script_location(name.clone(), id)
                                         .unwrap()
                                         .to_str()
                                         .expect("Launch thread failed."),
-                                )
-                                .unwrap();
+                                ) {
+                                    let err = format!("{:?}", err);
+                                    log!("Run script for:", name, "failed", err);
+                                }
                             });
                             break;
                         }
@@ -152,12 +157,10 @@ fn execute(
                                 Err(err) => return Err(err), // unwrap and rewrap to explicitly note this is an err.
                             };
                             thread::spawn(move || {
-                                process::Command::new(entry)
-                                    .args(command)
-                                    .stdout(process::Stdio::null())
-                                    .stderr(process::Stdio::null())
-                                    .spawn()
-                                    .unwrap();
+                                let output =
+                                    process::Command::new(entry).args(command).output().unwrap();
+                                log!("Launching stdout:", &output.stdout);
+                                log!("Launching stderr:", &output.stderr);
                             });
                             break;
                         }
@@ -195,7 +198,7 @@ fn execute(
                                 .lines()
                                 .enumerate()
                                 .filter(|(i, _)| i % 4 == 0)
-                                .map(|(_, l)| match *LICENSE_LEX.tokenize(&l).as_slice() {
+                                .map(|(_, l)| match *LICENSE_LEX.tokenize(l).as_slice() {
                                     ["packageID", id] => id.parse::<i32>().unwrap_or(-1),
                                     _ => -1,
                                 })
@@ -242,7 +245,7 @@ fn execute(
                         ["app_info_print", key] => {
                             let mut lines = response.lines();
                             updated += 1;
-                            if let Ok(game) = Game::new(&key, &mut lines) {
+                            if let Ok(game) = Game::new(key, &mut lines) {
                                 games.push(game);
                             }
                         }

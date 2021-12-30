@@ -100,7 +100,7 @@ pub enum Command {
 pub fn parse(block: &mut dyn Iterator<Item = &str>) -> Datum {
     let mut map = HashMap::new();
     while let Some(line) = block.next() {
-        match *DATA_LEX.tokenize(&line).as_slice() {
+        match *DATA_LEX.tokenize(line).as_slice() {
             ["}"] => {
                 break;
             }

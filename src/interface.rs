@@ -20,7 +20,7 @@ impl GameStatus {
     pub fn new(data: &str) -> Result<GameStatus, STError> {
         let data = data.lines();
         let data = data
-            .map(|l| match *STATUS_LEX.tokenize(&l).as_slice() {
+            .map(|l| match *STATUS_LEX.tokenize(l).as_slice() {
                 ["state", state] => Some(state),
                 ["dir", dir] => Some(dir),
                 ["disk", disk] => Some(disk),
@@ -103,7 +103,7 @@ impl Launch {
             keys.sort_unstable();
             for key in keys {
                 if let Some(Datum::Nest(config)) = config.get(&format!("{}", key)) {
-                    launches.push(Launch::new(&config, &installdir)?);
+                    launches.push(Launch::new(config, &installdir)?);
                 }
             }
             launches.sort_by(|a, b| match (&a.platform, &b.platform) {
@@ -204,7 +204,7 @@ impl Account {
     pub fn new(data: &str) -> Result<Account, STError> {
         let data = data.lines();
         let data = data
-            .map(|l| match *ACCOUNT_LEX.tokenize(&l).as_slice() {
+            .map(|l| match *ACCOUNT_LEX.tokenize(l).as_slice() {
                 ["Account", account] => Some(account),
                 ["SteamID", id] => Some(id),
                 ["Language", lang] => Some(lang),

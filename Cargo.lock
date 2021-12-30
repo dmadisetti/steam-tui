@@ -1156,6 +1156,7 @@ dependencies = [
 name = "steam-tui"
 version = "0.1.3"
 dependencies = [
+ "atty",
  "fuzzy-matcher",
  "image",
  "lazy_static",
