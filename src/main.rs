@@ -44,6 +44,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
         client.login(&app.user)?;
     }
     let mut game_list: StatefulList<Game> = StatefulList::new();
+    eprintln!("{:?}", game_list.items);
     game_list.restart();
 
     loop {
