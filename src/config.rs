@@ -7,6 +7,7 @@ use std::fs;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     pub default_user: String,
+    pub hidden_games: Vec<i32>,
 }
 
 impl Config {
@@ -16,6 +17,7 @@ impl Config {
             _ => {
                 let config = Config {
                     default_user: "".to_string(),
+                    hidden_games: vec![],
                 };
                 config.save()?;
                 Ok(config)
