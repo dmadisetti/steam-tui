@@ -197,22 +197,33 @@ impl App {
         game_list: &StatefulList<Game>,
         status: Option<GameStatus>,
     ) -> (List<'a>, Table<'a>) {
+        let config = Config::new();
+
         let games = Block::default()
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White))
             .title("Games")
             .border_type(BorderType::Plain);
 
-        let items: Vec<_> = game_list
-            .activated()
+        let mut new_list = vec![];
+
+        for i in game_list.activated().iter() {
+            if !config.as_ref().unwrap().hidden_games.contains(&i.id)  {
+                // println!("{}", i.name);
+                new_list.push(i.clone());
+            } 
+        }
+
+        let items: Vec<_> = new_list
             .iter()
             .map(|game| {
                 ListItem::new(Spans::from(vec![Span::styled(
-                    game.name.clone(),
+                        game.name.clone(),
                     Style::default(),
                 )]))
             })
             .collect();
+
 
         let list = List::new(items).block(games).highlight_style(
             Style::default()
@@ -220,6 +231,7 @@ impl App {
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         );
+
 
         let details = match game_list.selected() {
             Some(selected) => {
