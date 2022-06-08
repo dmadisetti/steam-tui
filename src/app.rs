@@ -1,9 +1,12 @@
 extern crate pretty_bytes;
 
+use std::collections::HashMap;
+
+use crate::client::Client;
 use crate::util::stateful::StatefulList;
 
 use crate::config::Config;
-use crate::interface::{Game, GameStatus};
+use crate::interface::Game;
 
 use pretty_bytes::converter::convert;
 
@@ -55,6 +58,7 @@ const SPLASH: &str = r#"
 pub struct App {
     pub mode: Mode,
     pub user: String,
+    cached_uninstalled_queries: HashMap<i32, bool>,
 }
 
 #[derive(PartialEq, Clone)]
@@ -78,6 +82,7 @@ impl App {
                 Mode::Loading
             },
             user,
+            cached_uninstalled_queries: HashMap::new(),
         }
     }
 
@@ -194,8 +199,9 @@ impl App {
     }
 
     pub fn render_games<'a>(
+        &mut self,
         game_list: &StatefulList<Game>,
-        status: Option<GameStatus>,
+        client: &Client,
     ) -> (List<'a>, Table<'a>) {
         let games = Block::default()
             .borders(Borders::ALL)
@@ -207,9 +213,28 @@ impl App {
             .activated()
             .iter()
             .map(|game| {
+                if self.cached_uninstalled_queries.get(&game.id).is_none() {
+                    let status = match client.status(game.id) {
+                        Ok(status) => Some(status),
+                        _ => None,
+                    };
+                    self.cached_uninstalled_queries
+                        .insert(game.id, status.unwrap().state == "uninstalled");
+                }
+
+                let is_uninstalled = self
+                    .cached_uninstalled_queries
+                    .get(&game.id)
+                    .unwrap_or(&false);
+                let text_color = if *is_uninstalled {
+                    Color::DarkGray
+                } else {
+                    Color::White
+                };
+
                 ListItem::new(Spans::from(vec![Span::styled(
                     game.name.clone(),
-                    Style::default(),
+                    Style::default().fg(text_color),
                 )]))
             })
             .collect();
@@ -256,6 +281,12 @@ impl App {
                         Cell::from(Span::raw(value.clone())),
                     ]));
                 }
+
+                let status = match client.status(selected.id) {
+                    Ok(status) => Some(status),
+                    _ => None,
+                };
+
                 if let Some(status) = status {
                     table.push(spacer.clone());
                     for &(heading, value) in &[

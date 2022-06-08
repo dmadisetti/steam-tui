@@ -17,7 +17,7 @@ use steam_tui::config::Config;
 use steam_tui::interface::Game;
 
 // why isn't this in stdlib for floats?
-fn min(a :f32, b :f32) -> f32 {
+fn min(a: f32, b: f32) -> f32 {
     if a < b {
         return a;
     }
@@ -70,18 +70,10 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     frame.render_widget(App::build_splash(), placement[0]);
                 }
                 _ => {
-                    let selected: i32 = match game_list.selected() {
-                        Some(game) => game.id as i32,
-                        None => 0,
-                    };
-                    let status = match client.status(selected) {
-                        Ok(status) => Some(status),
-                        _ => None,
-                    };
                     let game_layout = App::build_game_layout();
                     let image_layout = App::build_image_layout();
 
-                    let (left, right) = App::render_games(&game_list, status);
+                    let (left, right) = App::render_games(&mut app, &game_list, &client);
                     let game_placement = game_layout.split(placement[0]);
                     // Incorrect image placement leads to hard crash. Explicitly calculate bounds
                     // here.
@@ -96,7 +88,10 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             // Height is counted by row, and there are 10 lines of info.
                             let height = min((offset_y as f32) - 10.0, 80.0);
                             // Take minium, but respect aspect ratio.
-                            (min(width, height*2.0) as u16, min(height, width/2.0) as u16)
+                            (
+                                min(width, height * 2.0) as u16,
+                                min(height, width / 2.0) as u16,
+                            )
                         };
                         image_layout.split(Rect {
                             x: offset_x - width,

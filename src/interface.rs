@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 const STEAM_CDN: &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/";
 
+#[derive(Debug)]
 pub struct GameStatus {
     pub state: String,
     pub installdir: String,
