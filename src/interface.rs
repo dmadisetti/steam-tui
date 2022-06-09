@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 
 use serde::{Deserialize, Serialize};
+use tui::style::Color;
 
 const STEAM_CDN: &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/";
 
@@ -135,6 +136,7 @@ pub struct Game {
     pub launch: Vec<Launch>,
     pub game_type: GameType,
     pub icon_url: Option<String>,
+    pub color_in_list: Option<Color>,
 }
 impl Game {
     pub fn new(key: &str, lines: &mut std::str::Lines) -> Result<Game, STError> {
@@ -177,6 +179,7 @@ impl Game {
                             }
                             _ => None,
                         },
+                        color_in_list: None,
                     };
                     return Ok(game);
                 }

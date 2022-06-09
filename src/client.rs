@@ -11,6 +11,7 @@ use crate::util::{
 };
 
 use port_scanner::scan_port;
+use tui::style::Color;
 
 use std::process;
 use std::sync::Arc;
@@ -381,7 +382,29 @@ impl Client {
     pub fn games(&self) -> Result<Vec<Game>, STError> {
         let db_content = fs::read_to_string(cache_location()?)?;
         let parsed: Vec<Game> = serde_json::from_str(&db_content)?;
-        Ok(parsed)
+        let parsed_with_color: Vec<Game> = parsed
+            .iter()
+            .map(|game| {
+                let mut game = game.clone();
+                let status = match self.status(game.id) {
+                    Ok(status) => Some(status),
+                    _ => None,
+                };
+
+                game.color_in_list = match status {
+                    Some(status) => {
+                        if status.state == "uninstalled" {
+                            Some(Color::DarkGray)
+                        } else {
+                            Some(Color::White)
+                        }
+                    }
+                    _ => Some(Color::White),
+                };
+                game
+            })
+            .collect();
+        Ok(parsed_with_color)
     }
 
     /// Binds data from 'app_status' to a `GameStatus` object.

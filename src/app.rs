@@ -1,9 +1,6 @@
 extern crate pretty_bytes;
 
-use std::collections::HashMap;
-
-use crate::client::Client;
-use crate::util::stateful::StatefulList;
+use crate::{client::Client, util::stateful::StatefulList};
 
 use crate::config::Config;
 use crate::interface::Game;
@@ -58,7 +55,6 @@ const SPLASH: &str = r#"
 pub struct App {
     pub mode: Mode,
     pub user: String,
-    cached_uninstalled_queries: HashMap<i32, bool>,
 }
 
 #[derive(PartialEq, Clone)]
@@ -82,7 +78,6 @@ impl App {
                 Mode::Loading
             },
             user,
-            cached_uninstalled_queries: HashMap::new(),
         }
     }
 
@@ -213,28 +208,11 @@ impl App {
             .activated()
             .iter()
             .map(|game| {
-                if self.cached_uninstalled_queries.get(&game.id).is_none() {
-                    let status = match client.status(game.id) {
-                        Ok(status) => Some(status),
-                        _ => None,
-                    };
-                    self.cached_uninstalled_queries
-                        .insert(game.id, status.unwrap().state == "uninstalled");
-                }
-
-                let is_uninstalled = self
-                    .cached_uninstalled_queries
-                    .get(&game.id)
-                    .unwrap_or(&false);
-                let text_color = if *is_uninstalled {
-                    Color::DarkGray
-                } else {
-                    Color::White
-                };
+                let color = game.color_in_list.unwrap_or(Color::DarkGray);
 
                 ListItem::new(Spans::from(vec![Span::styled(
                     game.name.clone(),
-                    Style::default().fg(text_color),
+                    Style::default().fg(color),
                 )]))
             })
             .collect();
