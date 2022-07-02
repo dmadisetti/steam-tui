@@ -20,13 +20,12 @@ impl GameStatus {
     pub fn new(data: &str) -> Result<GameStatus, STError> {
         let data = data.lines();
         let data = data
-            .map(|l| match *STATUS_LEX.tokenize(l).as_slice() {
+            .filter_map(|l| match *STATUS_LEX.tokenize(l).as_slice() {
                 ["state", state] => Some(state),
                 ["dir", dir] => Some(dir),
                 ["disk", disk] => Some(disk),
                 _ => None,
             })
-            .flatten()
             .collect::<Vec<&str>>();
         Ok(GameStatus {
             state: data.get(0).unwrap_or(&"").to_string(),

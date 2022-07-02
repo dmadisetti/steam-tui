@@ -28,7 +28,7 @@ impl Lexer {
                 .map(|c| c.as_str()) // Grab the original strings
                 .collect::<Vec<_>>() // Create a vector
         });
-        captures.unwrap_or_else(Vec::new)
+        captures.unwrap_or_default()
     }
 }
 
