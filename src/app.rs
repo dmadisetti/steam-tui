@@ -197,7 +197,6 @@ impl App {
         game_list: &StatefulList<Game>,
         status: Option<GameStatus>,
     ) -> (List<'a>, Table<'a>) {
-        let config = Config::new();
 
         let games = Block::default()
             .borders(Borders::ALL)
@@ -208,7 +207,6 @@ impl App {
         let items: Vec<_> = game_list
             .activated()
             .iter()
-            .filter(|game| !config.as_ref().unwrap().hidden_games.contains(&game.id))
             .map(|game| {
                 ListItem::new(Spans::from(vec![Span::styled(
                     game.name.clone(),

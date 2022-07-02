@@ -162,7 +162,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                         if let Some(game) = game_list.selected() {
                             config.hidden_games.push(game.id);
                             Config::save(&config)?;
-                            game_list.next();
+                            img = update_img(&game_list.selected());
                         }
                     }
                     Key::Char(' ') => {

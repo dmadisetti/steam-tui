@@ -1,5 +1,8 @@
-use crate::util::{error::STError, parser::*, stateful::Named};
 use crate::interface::executable::Executable;
+use crate::util::{error::STError, parser::*, stateful::Named};
+
+use crate::config::Config;
+use crate::util::log::log;
 
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +11,14 @@ const STEAM_CDN: &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/i
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub enum GameType {
     Game,
+    DLC,
     Driver,
+
+    // Other types, default hidden
+    Application,
+    Config,
+    Demo,
+    Tool,
     Unknown,
 }
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -52,7 +62,16 @@ impl Game {
                             _ => match common.get("type") {
                                 Some(Datum::Value(value)) => match value.to_lowercase().as_str() {
                                     "game" => GameType::Game,
-                                    _ => GameType::Unknown,
+                                    "dlc" => GameType::DLC,
+
+                                    "application" => GameType::Application,
+                                    "config" => GameType::Config,
+                                    "demo" => GameType::Demo,
+                                    "tool" => GameType::Tool,
+                                    unknown => {
+                                        log!("Unknown game type", unknown);
+                                        GameType::Unknown
+                                    }
                                 },
                                 _ => GameType::Unknown,
                             },
@@ -76,8 +95,10 @@ impl Named for Game {
     fn get_name(&self) -> String {
         self.name.clone()
     }
-    // Should be tuneable through config, but w/e
+
     fn is_valid(&self) -> bool {
-        self.game_type == GameType::Game
+        // Slow, and a hack- but whatever.
+        let config = Config::new().unwrap();
+        !&config.hidden_games.contains(&self.id) && config.allowed_games.contains(&self.game_type)
     }
 }

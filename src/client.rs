@@ -1,9 +1,5 @@
 use crate::interface::{
-    account::Account,
-    game::Game,
-    game_status::*,
-    executable::*,
-    steam_cmd::SteamCmd,
+    account::Account, executable::*, game::Game, game_status::*, steam_cmd::SteamCmd,
 };
 
 use crate::util::{

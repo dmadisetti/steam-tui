@@ -1,6 +1,8 @@
 use crate::util::error::STError;
 use crate::util::paths::config_location;
 
+use crate::interface::game::GameType;
+
 use serde::{Deserialize, Serialize};
 use std::fs;
 
@@ -8,6 +10,7 @@ use std::fs;
 pub struct Config {
     pub default_user: String,
     pub hidden_games: Vec<i32>,
+    pub allowed_games: Vec<GameType>,
 }
 
 impl Config {
@@ -18,6 +21,7 @@ impl Config {
                 let config = Config {
                     default_user: "".to_string(),
                     hidden_games: vec![],
+                    allowed_games: vec![GameType::Game, GameType::DLC],
                 };
                 config.save()?;
                 Ok(config)
