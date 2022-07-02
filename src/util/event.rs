@@ -7,6 +7,8 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
+use crate::utils::log::log;
+
 use termion::event::Key;
 use termion::input::TermRead;
 
@@ -24,15 +26,13 @@ pub struct Events {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
-    pub exit_key: Key,
     pub tick_rate: Duration,
 }
 
 impl Default for Config {
     fn default() -> Config {
         Config {
-            exit_key: Key::Char('q'),
-            tick_rate: Duration::from_millis(250),
+            tick_rate: Duration::from_millis(150),
         }
     }
 }
@@ -45,15 +45,22 @@ impl Events {
     pub fn with_config(config: Config) -> Events {
         let (tx, rx) = mpsc::channel();
         let stop = Arc::new(AtomicBool::new(false));
+        let release = Arc::new(AtomicBool::new(false));
+
         let _input_handle = {
             let tx = tx.clone();
             let stop = stop.clone();
+            let release = release.clone();
             thread::spawn(move || {
                 let stdin = io::stdin();
                 for key in stdin.keys().flatten() {
-                    if let Err(err) = tx.send(Event::Input(key)) {
-                        eprintln!("{}", err);
-                        return;
+
+                    if release.load(Ordering::Relaxed) {
+                        if let Err(err) = tx.send(Event::Input(key)) {
+                            log!(err);
+                            return;
+                        }
+                        release.store(false, Ordering::Relaxed);
                     }
                     if stop.load(Ordering::Relaxed) {
                         return;
@@ -63,11 +70,13 @@ impl Events {
         };
         let _tick_handle = {
             let stop = stop.clone();
+            let release = release.clone();
             thread::spawn(move || loop {
                 if tx.send(Event::Tick).is_err() {
                     break;
                 }
                 thread::sleep(config.tick_rate);
+                release.store(true, Ordering::Relaxed);
                 if stop.load(Ordering::Relaxed) {
                     return;
                 }
