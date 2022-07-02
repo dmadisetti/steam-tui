@@ -13,7 +13,7 @@ use steam_tui::util::stateful::StatefulList;
 
 use steam_tui::app::{App, Mode};
 use steam_tui::client::{Client, State};
-use steam_tui::config::Config;
+use steam_tui::config::{Config, self};
 use steam_tui::interface::Game;
 
 // why isn't this in stdlib for floats?
@@ -44,6 +44,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
         client.login(&app.user)?;
     }
     let mut game_list: StatefulList<Game> = StatefulList::new();
+    eprintln!("{:?}", game_list.items);
     game_list.restart();
 
     loop {
@@ -153,6 +154,12 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     Key::Char('\n') => {
                         if let Some(game) = game_list.selected() {
                             client.run(game.id, &game.launch)?;
+                        }
+                    }
+                    Key::Char('h') => {
+                        if let Some(game) = game_list.selected() {
+                            config.hidden_games.push(game.id);
+                            config::Config::save(&config)?;
                         }
                     }
                     Key::Char(' ') => {
