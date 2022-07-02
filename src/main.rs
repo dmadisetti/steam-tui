@@ -13,11 +13,11 @@ use steam_tui::util::stateful::StatefulList;
 
 use steam_tui::app::{App, Mode};
 use steam_tui::client::{Client, State};
-use steam_tui::config::{Config, self};
+use steam_tui::config::Config;
 use steam_tui::interface::Game;
 
 // why isn't this in stdlib for floats?
-fn min(a :f32, b :f32) -> f32 {
+fn min(a: f32, b: f32) -> f32 {
     if a < b {
         return a;
     }
@@ -44,7 +44,6 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
         client.login(&app.user)?;
     }
     let mut game_list: StatefulList<Game> = StatefulList::new();
-    eprintln!("{:?}", game_list.items);
     game_list.restart();
 
     loop {
@@ -97,7 +96,10 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             // Height is counted by row, and there are 10 lines of info.
                             let height = min((offset_y as f32) - 10.0, 80.0);
                             // Take minium, but respect aspect ratio.
-                            (min(width, height*2.0) as u16, min(height, width/2.0) as u16)
+                            (
+                                min(width, height * 2.0) as u16,
+                                min(height, width / 2.0) as u16,
+                            )
                         };
                         image_layout.split(Rect {
                             x: offset_x - width,
@@ -156,10 +158,11 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             client.run(game.id, &game.launch)?;
                         }
                     }
-                    Key::Char('h') => {
+                    Key::Char('H') => {
                         if let Some(game) = game_list.selected() {
                             config.hidden_games.push(game.id);
-                            config::Config::save(&config)?;
+                            Config::save(&config)?;
+                            game_list.next();
                         }
                     }
                     Key::Char(' ') => {

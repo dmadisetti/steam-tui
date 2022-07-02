@@ -205,25 +205,17 @@ impl App {
             .title("Games")
             .border_type(BorderType::Plain);
 
-        let mut new_list = vec![];
-
-        for i in game_list.activated().iter() {
-            if !config.as_ref().unwrap().hidden_games.contains(&i.id)  {
-                // println!("{}", i.name);
-                new_list.push(i.clone());
-            } 
-        }
-
-        let items: Vec<_> = new_list
+        let items: Vec<_> = game_list
+            .activated()
             .iter()
+            .filter(|game| !config.as_ref().unwrap().hidden_games.contains(&game.id))
             .map(|game| {
                 ListItem::new(Spans::from(vec![Span::styled(
-                        game.name.clone(),
+                    game.name.clone(),
                     Style::default(),
                 )]))
             })
             .collect();
-
 
         let list = List::new(items).block(games).highlight_style(
             Style::default()
@@ -231,7 +223,6 @@ impl App {
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         );
-
 
         let details = match game_list.selected() {
             Some(selected) => {
