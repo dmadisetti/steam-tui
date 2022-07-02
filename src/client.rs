@@ -1,4 +1,10 @@
-use crate::interface::*;
+use crate::interface::{
+    account::Account,
+    game::Game,
+    game_status::*,
+    executable::*,
+    steam_cmd::SteamCmd,
+};
 
 use crate::util::{
     error::STError,
@@ -340,7 +346,7 @@ impl Client {
 
     /// Launches the provided game id using 'app_run' in steemcmd, or the raw executable depending
     /// on the Steam client state.
-    pub fn run(&self, id: i32, launchables: &[Launch]) -> Result<(), STError> {
+    pub fn run(&self, id: i32, launchables: &[Executable]) -> Result<(), STError> {
         let sender = self.sender.lock()?;
         sender.send(Command::Run(id, launchables.to_owned().to_vec()))?;
         Ok(())

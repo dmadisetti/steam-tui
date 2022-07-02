@@ -3,7 +3,7 @@ extern crate pretty_bytes;
 use crate::util::stateful::StatefulList;
 
 use crate::config::Config;
-use crate::interface::{Game, GameStatus};
+use crate::interface::{game::Game, game_status::GameStatus};
 
 use pretty_bytes::converter::convert;
 

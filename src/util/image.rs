@@ -2,7 +2,7 @@ use std::thread;
 
 use crate::util::paths::{icon_exists, icon_save};
 
-use crate::interface::Game;
+use crate::interface::game::Game;
 
 pub fn update_img(
     selected: &Option<&Game>,

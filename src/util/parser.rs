@@ -1,6 +1,6 @@
 extern crate regex;
 
-use crate::interface::Launch;
+use crate::interface::executable::Executable;
 use crate::util::error::STError;
 
 use std::collections::HashMap;
@@ -92,7 +92,7 @@ impl Datum {
 pub enum Command {
     Cli(String),
     Install(i32),
-    Run(i32, Vec<Launch>),
+    Run(i32, Vec<Executable>),
     StartClient,
     Restart,
 }

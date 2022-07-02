@@ -14,7 +14,7 @@ use steam_tui::util::stateful::StatefulList;
 use steam_tui::app::{App, Mode};
 use steam_tui::client::{Client, State};
 use steam_tui::config::Config;
-use steam_tui::interface::Game;
+use steam_tui::interface::game::Game;
 
 // why isn't this in stdlib for floats?
 fn min(a: f32, b: f32) -> f32 {
@@ -155,7 +155,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Key::Char('\n') => {
                         if let Some(game) = game_list.selected() {
-                            client.run(game.id, &game.launch)?;
+                            client.run(game.id, &game.executable)?;
                         }
                     }
                     Key::Char('H') => {
