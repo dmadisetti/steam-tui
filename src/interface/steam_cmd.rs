@@ -10,7 +10,7 @@ pub struct SteamCmd {
 }
 
 impl SteamCmd {
-    fn with_args(args: Vec<&str>) -> Result<SteamCmd, STError> {
+    fn with_args_and_seperator(args: Vec<&str>, sep: u8) -> Result<SteamCmd, STError> {
         let attempt = process::Command::new("steamcmd")
             .args(args.as_slice())
             .stdin(process::Stdio::piped())
@@ -27,18 +27,24 @@ impl SteamCmd {
                 .stdout
                 .ok_or_else(|| STError::Problem("Failed to attach to stdout.".to_string()))?,
         );
-        let mut iter = f.split(0x1b);
+        let iter = f.split(sep);
         let stdin = child
             .stdin
             .ok_or_else(|| STError::Problem("Failed to attach to stdin..".to_string()))?;
 
-        // Send start up data I guess yeah?
-        iter.next();
-        iter.next();
-        iter.next();
-        iter.next();
-
         Ok(SteamCmd { iter, stdin })
+    }
+
+    fn with_args(args: Vec<&str>) -> Result<SteamCmd, STError> {
+        let mut cmd = SteamCmd::with_args_and_seperator(args, 0x1b)?;
+
+        // Send start up data I guess yeah?
+        cmd.next();
+        cmd.next();
+        cmd.next();
+        cmd.next();
+
+        Ok(cmd)
     }
 
     pub fn new() -> Result<SteamCmd, STError> {
@@ -49,12 +55,12 @@ impl SteamCmd {
     }
 
     pub fn script(script: &str) -> Result<SteamCmd, STError> {
-        SteamCmd::with_args(vec![
+        SteamCmd::with_args_and_seperator(vec![
             "+@ShutdownOnFailedCommand 1",
             "+@NoPromptForPassword 1",
             "+@sStartupScript",
             &format!("runscript {}", script),
-        ])
+        ], 0x0a)
     }
     pub fn write(&mut self, line: &str) -> Result<(), STError> {
         // Strip line endings

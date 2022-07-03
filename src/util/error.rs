@@ -1,4 +1,4 @@
-use crate::util::parser::Command;
+use crate::client::Command;
 
 use shellexpand::LookupError;
 use std::error;

@@ -32,12 +32,14 @@
               # steam
               steam
               steamcmd
+              steam-run
 
               # misc
               wine
               python3
               lutris
             ];
+            STEAM_RUN_WRAPPER = "${steam-run}/bin/steam-run";
           };
 
         steam-tui = with pkgs;

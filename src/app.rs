@@ -220,7 +220,7 @@ impl App {
             .map(|game| {
                 let fg = {
                     if let Some(status) = game.get_status() {
-                        if status.state == "uninstalled" {
+                        if status.state == "uninstalled" || status.state.contains("Failed") {
                             Color::DarkGray
                         } else {
                             Color::White

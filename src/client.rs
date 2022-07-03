@@ -35,6 +35,14 @@ pub enum State {
     Loaded(i32, i32),
 }
 
+pub enum Command {
+    Cli(String),
+    Install(i32, Arc<Mutex<Option<GameStatus>>>),
+    Run(i32, Vec<Executable>, Arc<Mutex<Option<GameStatus>>>),
+    StartClient,
+    Restart,
+}
+
 fn execute(
     state: Arc<Mutex<State>>,
     sender: Sender<String>,
@@ -96,7 +104,7 @@ fn execute(
                     };
                     queue.push_front(Command::Cli(format!("login {}", user)));
                 }
-                Some(Command::Install(id)) => {
+                Some(Command::Install(id, status)) => {
                     if let Some(ref acct) = account {
                         if downloading.contains(&id) {
                             continue;
@@ -104,19 +112,79 @@ fn execute(
                         downloading.insert(id);
                         let name = acct.account.clone();
                         thread::spawn(move || {
-                            if let Err(err) = SteamCmd::script(
+                            {
+                                let mut reference = status.lock().unwrap();
+                                *reference = Some(GameStatus::msg(&*reference, "processing..."));
+                            }
+                            match SteamCmd::script(
                                 install_script_location(name.clone(), id)
                                     .unwrap()
                                     .to_str()
                                     .expect("Installation thread failed."),
                             ) {
-                                let err = format!("{:?}", err);
-                                log!("Install script for:", name, "failed", err);
+                                Ok(mut cmd) => {
+                                    // Scrub past unused data.
+                                    for _ in 1..15 {
+                                        cmd.next();
+                                    }
+                                    while let Ok(buf) = cmd.maybe_next() {
+                                        let response = String::from_utf8_lossy(&buf);
+                                        // TODO: Investigate why download updates don't seem to
+                                        // appear...
+                                        match *INSTALL_LEX.tokenize(&response).as_slice() {
+                                            ["Update", a, b] => {
+                                                let a = a.parse::<f64>().unwrap_or(0.);
+                                                let b = b.parse::<f64>().unwrap_or(1.);
+                                                let mut reference = status.lock().unwrap();
+                                                let update =
+                                                    format!("downloading {}%", 100. * a / b);
+                                                *reference =
+                                                    Some(GameStatus::msg(&*reference, &update));
+                                            }
+                                            ["ERROR", msg] => {
+                                                let mut reference = status.lock().unwrap();
+                                                let update = format!("Failed: {}", msg);
+                                                *reference =
+                                                    Some(GameStatus::msg(&*reference, &update));
+                                            }
+                                            ["Success"] => {
+                                                let mut reference = status.lock().unwrap();
+                                                let size = match &*reference {
+                                                    Some(gs) => gs.size,
+                                                    _ => 0.,
+                                                };
+                                                *reference = Some(GameStatus {
+                                                    state: "Success!".to_string(),
+                                                    installdir: "".to_string(),
+                                                    size,
+                                                });
+                                                // TODO: call app_status and update after success.
+                                            }
+                                            _ => {
+                                                log!("unmatched", response);
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(err) => {
+                                    let err = format!("{:?}", err);
+                                    let mut reference = status.lock().unwrap();
+                                    *reference = Some(GameStatus {
+                                        state: format!("Failed: {}", err),
+                                        installdir: "".to_string(),
+                                        size: 0.,
+                                    });
+                                    log!("Install script for:", name, "failed", err);
+                                }
                             }
                         });
                     };
                 }
-                Some(Command::Run(id, launchables)) => {
+                Some(Command::Run(id, executables, status)) => {
+                    {
+                        let mut reference = status.lock().unwrap();
+                        *reference = Some(GameStatus::msg(&*reference, "launching..."));
+                    }
                     // IF steam is running (we can check for port tcp/57343), then
                     //   SteamCmd::script("login, app_run <>, quit")
                     // otherwise attempt to launch normally.
@@ -132,13 +200,20 @@ fn execute(
                                 ) {
                                     let err = format!("{:?}", err);
                                     log!("Run script for:", name, "failed", err);
+                                    let mut reference = status.lock().unwrap();
+                                    *reference = Some(GameStatus::msg(
+                                        &*reference,
+                                        &format!("Error: {}", err),
+                                    ));
                                 }
                             });
                             break;
                         }
                     }
-                    for launchable in launchables {
+                    let mut launched = false;
+                    for launchable in executables {
                         if let Ok(path) = executable_exists(&launchable.executable) {
+                            log!(path);
                             let mut command = match launchable.platform {
                                 Platform::Windows => vec![
                                     "wine".to_string(),
@@ -158,14 +233,39 @@ fn execute(
                                 Err(STError::Problem(_)) => command.remove(0),
                                 Err(err) => return Err(err), // unwrap and rewrap to explicitly note this is an err.
                             };
+                            let status = status.clone();
                             thread::spawn(move || {
-                                let output =
-                                    process::Command::new(entry).args(command).output().unwrap();
-                                log!("Launching stdout:", &output.stdout);
-                                log!("Launching stderr:", &output.stderr);
+                                {
+                                    let mut reference = status.lock().unwrap();
+                                    *reference = Some(GameStatus::msg(&*reference, "running..."));
+                                }
+                                match process::Command::new(entry).args(command).output() {
+                                    Ok(output) => {
+                                        let mut reference = status.lock().unwrap();
+                                        *reference =
+                                            Some(GameStatus::msg(&*reference, "Fully Installed"));
+                                        log!("Launching stdout:", &std::str::from_utf8(&output.stdout));
+                                        log!("Launching stderr:", &std::str::from_utf8(&output.stderr));
+                                    }
+                                    Err(err) => {
+                                        let mut reference = status.lock().unwrap();
+                                        *reference = Some(GameStatus::msg(
+                                            &*reference,
+                                            &format!("failed to launch: {}", err),
+                                        ));
+                                    }
+                                }
                             });
+                            launched = true;
                             break;
                         }
+                    }
+                    if !launched {
+                        let mut reference = status.lock().unwrap();
+                        *reference = Some(GameStatus::msg(
+                            &*reference,
+                            "Failed: Could not find executable to launch. Try setting $STEAM_APP_DIR",
+                        ));
                     }
                 }
                 // Execute and handles response to various SteamCmd Commands.
@@ -326,9 +426,9 @@ impl Client {
     }
 
     /// Runs installation script for the provided game id.
-    pub fn install(&self, id: i32) -> Result<(), STError> {
+    pub fn install(&self, game: &Game) -> Result<(), STError> {
         let sender = self.sender.lock()?;
-        sender.send(Command::Install(id))?;
+        sender.send(Command::Install(game.id as i32, game.status_counter()))?;
         Ok(())
     }
 
@@ -340,11 +440,15 @@ impl Client {
         Ok(())
     }
 
-    /// Launches the provided game id using 'app_run' in steemcmd, or the raw executable depending
+    /// Launches the provided game id using 'app_run' in steamcmd, or the raw executable depending
     /// on the Steam client state.
-    pub fn run(&self, id: i32, launchables: &[Executable]) -> Result<(), STError> {
+    pub fn run(&self, game: &Game) -> Result<(), STError> {
         let sender = self.sender.lock()?;
-        sender.send(Command::Run(id, launchables.to_owned().to_vec()))?;
+        sender.send(Command::Run(
+            game.id,
+            game.executable.to_owned().to_vec(),
+            game.status_counter(),
+        ))?;
         Ok(())
     }
 
@@ -445,9 +549,8 @@ impl Drop for Client {
 }
 #[cfg(test)]
 mod tests {
-    use crate::client::{Client, State};
+    use crate::client::{Client, Command, State};
     use crate::util::error::STError;
-    use crate::util::parser::Command;
     use std::sync::mpsc::channel;
     use std::sync::Arc;
     use std::sync::Mutex;

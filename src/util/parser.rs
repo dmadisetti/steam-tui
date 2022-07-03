@@ -1,6 +1,5 @@
 extern crate regex;
 
-use crate::interface::executable::Executable;
 use crate::util::error::STError;
 
 use std::collections::HashMap;
@@ -59,6 +58,13 @@ lazy_static! {
            "#,
     );
     pub static ref LICENSE_LEX: Lexer = Lexer::new(r".*(packageID)\s+(\d+).*");
+    pub static ref INSTALL_LEX: Lexer = Lexer::new(
+        r#"(?x)
+           .*(Update).*\((\d+)\s/\s(\d+)\)$ |
+           .*(ERROR)!\s+(.*)$ |
+           .*(Success).*$ |
+           "#,
+    );
     static ref DATA_LEX: Lexer = Lexer::new(
         r#"(?x)
            \s*"([^"]+)"\s+"([^"]*)"\s* |
@@ -89,14 +95,6 @@ impl Datum {
     }
 }
 
-pub enum Command {
-    Cli(String),
-    Install(i32),
-    Run(i32, Vec<Executable>),
-    StartClient,
-    Restart,
-}
-
 pub fn parse(block: &mut dyn Iterator<Item = &str>) -> Datum {
     let mut map = HashMap::new();
     while let Some(line) = block.next() {
@@ -119,7 +117,7 @@ pub fn parse(block: &mut dyn Iterator<Item = &str>) -> Datum {
 
 #[cfg(test)]
 mod tests {
-    use crate::util::parser::{parse, Datum};
+    use crate::util::parser::{parse, Datum, INSTALL_LEX};
     #[test]
     fn test_parse_data() {
         let mut block = r#"
@@ -164,5 +162,45 @@ mod tests {
             .maybe_value()
             .unwrap();
         assert!(complex.contains(&"Ü".to_string()));
+    }
+    #[test]
+    fn test_parse_update_basic() {
+        let line = "\u{1b}[0m Update state (0x3) reconfiguring, progress: 0.00 (0 / 0)";
+        match *INSTALL_LEX.tokenize(line).as_slice(){
+            ["Update", "0", "0"] => {}
+            _ => panic!("Matched {:?}", INSTALL_LEX.tokenize(line)),
+        }
+    }
+    #[test]
+    fn test_parse_update() {
+        let line = "\u{1b}[0m Update state (0x5) verifying install, progress: 0.00 (445476 / 12780261578)";
+        match *INSTALL_LEX.tokenize(line).as_slice() {
+            ["Update", "445476", "12780261578"] => {}
+            _ => panic!("Matched {:?}", INSTALL_LEX.tokenize(line)),
+        }
+    }
+    #[test]
+    fn test_parse_update_continue() {
+        let line = " Update state (0x5) verifying install, progress: 99.20 (12677647126 / 12780261578)";
+        match *INSTALL_LEX.tokenize(line).as_slice() {
+            ["Update", "12677647126", "12780261578"] => {}
+            _ => panic!("Matched {:?}", INSTALL_LEX.tokenize(line)),
+        }
+    }
+    #[test]
+    fn test_parse_update_fail() {
+        let line = "\u{1b}[0mERROR! Failed to install app '874260' (Invalid platform)";
+        match *INSTALL_LEX.tokenize(line).as_slice() {
+            ["ERROR", "Failed to install app '874260' (Invalid platform)"] => {}
+            _ => panic!("Matched {:?}", INSTALL_LEX.tokenize(line)),
+        }
+    }
+    #[test]
+    fn test_parse_update_sucess() {
+        let line = "Success! App '620' fully installed.";
+        match *INSTALL_LEX.tokenize(line).as_slice() {
+            ["Success"] => {}
+            _ => panic!("Matched {:?}", INSTALL_LEX.tokenize(line)),
+        }
     }
 }

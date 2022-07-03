@@ -14,7 +14,7 @@ use crate::util::log::log;
 
 use serde::{Deserialize, Serialize};
 
-const STEAM_CDN: &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/";
+const STEAM_CDN: &str = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps";
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub enum GameType {
@@ -56,6 +56,7 @@ impl Game {
                     Some(Datum::Nest(config)),
                 ) = (map.get("common"), map.get("extended"), map.get("config"))
                 {
+                    log!(config);
                     let game = Game {
                         id: key.parse::<i32>().unwrap_or(0),
                         name: common
@@ -66,7 +67,7 @@ impl Game {
                         homepage: extended.get("homepage").unwrap_or(&blank).maybe_value()?,
                         publisher: extended.get("publisher").unwrap_or(&blank).maybe_value()?,
                         executable: Executable::get_executables(
-                            &config.get("executable").cloned(),
+                            &config.get("launch").cloned(),
                             config.get("installdir").unwrap_or(&blank).maybe_value()?,
                         )?,
                         game_type: match common.get("driverversion") {
@@ -146,6 +147,10 @@ impl Game {
             status: Arc::new(Mutex::new(maybe_status)),
             ..game
         }
+    }
+
+    pub fn status_counter(&self) -> Arc<Mutex<Option<GameStatus>>> {
+        self.status.clone()
     }
 }
 

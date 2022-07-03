@@ -161,7 +161,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Key::Char('\n') => {
                         if let Some(game) = game_list.selected() {
-                            client.run(game.id, &game.executable)?;
+                            client.run(game)?;
                         }
                     }
                     Key::Char('f') => {
@@ -193,7 +193,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Key::Char('d') => {
                         if let Some(game) = game_list.selected() {
-                            client.install(game.id as i32)?;
+                            client.install(game)?;
                         }
                     }
                     Key::Esc => {

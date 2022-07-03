@@ -1,4 +1,4 @@
-use crate::util::{error::STError, parser::*, paths::executable_join};
+use crate::util::{error::STError, parser::*, paths::executable_join, log::log};
 
 use std::cmp::Ordering;
 
@@ -58,6 +58,7 @@ impl Executable {
         installdir: String,
     ) -> Result<Vec<Executable>, STError> {
         let mut executables = vec![];
+        log!(config);
         if let Some(Datum::Nest(config)) = config {
             let mut keys = config
                 .keys()
