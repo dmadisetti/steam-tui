@@ -24,6 +24,19 @@ Unable to launch games? Pressing space will start a bare-bones steam client (no
 graphics) in the background and will let you launch games that need steam
 libraries or have some sort of DRM.
 
+## Features not in the help
+
+It's like an Easter egg for reading documentation!
+
+### Favourites
+Pressing `f` will toggle favourites on a game, pressing `F` will filter favourite games.
+
+### Hiding games
+Pressing `H` will hide the selected game. Hidden games are recorded in `~/.config/steam-tui/config.json`.
+
+### Showing other things (like demos)
+You can enable (or hide by exclusion) `Game` `DLC` `Driver` `Applications` `Config` `Demo` `Tool` `Unknown`, by changing the `allowed_games` field in the config.
+
 ## Requirements
 
 [`steamcmd`](https://wiki.archlinux.org/title/steam#SteamCMD) is required to
@@ -32,8 +45,11 @@ this program. `wine` usage will be attempted if a native Linux game is not
 found.
 
 ## Why ?
-Because why not? Also, the Steam client seems to break on my Arch build. I have
-a GT 610, and barely anything graphical works- this is a nice work around.
+~Because why not? Also, the Steam client seems to break on my Arch build. I have
+a GT 610, and barely anything graphical works- this is a nice work around.~
+
+**Update**, I got rid of the 610 (let's go 1660), but moved to NixOS and the steam
+client still doesn't work lol.
 
 ## Contributing
 
@@ -46,7 +62,4 @@ time into this.
 
 ## Missing Features
 
-- Real time download updates [#20](https://github.com/dmadisetti/steam-tui/issues/20)
-- Real time running game updates
-- Filtering for DLCs etc.. [#11](https://github.com/dmadisetti/steam-tui/issues/11)
-- Better handling for Proton games [#17](https://github.com/dmadisetti/steam-tui/issues/17)
+- Better handling for Proton games
