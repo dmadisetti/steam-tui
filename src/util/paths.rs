@@ -172,3 +172,8 @@ pub fn cache_location() -> Result<PathBuf, STError> {
     touch(&cache_path)?;
     Ok(cache_path)
 }
+
+pub fn invalidate_cache() -> Result<(), STError> {
+    fs::remove_file(cache_location()?)?;
+    Ok(())
+}

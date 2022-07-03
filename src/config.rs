@@ -6,11 +6,15 @@ use crate::interface::game::GameType;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
+use tui::style::Color;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     pub default_user: String,
     pub hidden_games: Vec<i32>,
+    pub favorite_games: Vec<i32>,
     pub allowed_games: Vec<GameType>,
+    pub highlight: Color,
 }
 
 impl Config {
@@ -21,7 +25,9 @@ impl Config {
                 let config = Config {
                     default_user: "".to_string(),
                     hidden_games: vec![],
+                    favorite_games: vec![],
                     allowed_games: vec![GameType::Game, GameType::DLC],
+                    highlight: Color::Green,
                 };
                 config.save()?;
                 Ok(config)

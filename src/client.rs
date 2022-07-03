@@ -383,7 +383,11 @@ impl Client {
     pub fn games(&self) -> Result<Vec<Game>, STError> {
         let db_content = fs::read_to_string(cache_location()?)?;
         let parsed: Vec<Game> = serde_json::from_str(&db_content)?;
-        Ok(parsed)
+        let processed = parsed
+            .iter()
+            .map(|game| Game::move_with_status((*game).clone(), self.status(game.id).ok()))
+            .collect();
+        Ok(processed)
     }
 
     /// Binds data from 'app_status' to a `GameStatus` object.

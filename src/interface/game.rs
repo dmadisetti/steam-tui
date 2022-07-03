@@ -1,3 +1,8 @@
+use std::sync::Arc;
+use std::sync::Mutex;
+
+use crate::interface::game_status::GameStatus;
+
 use crate::interface::executable::Executable;
 use crate::util::{error::STError, parser::*, stateful::Named};
 
@@ -21,7 +26,7 @@ pub enum GameType {
     Tool,
     Unknown,
 }
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Game {
     pub id: i32,
     pub name: String,
@@ -31,6 +36,8 @@ pub struct Game {
     pub executable: Vec<Executable>,
     pub game_type: GameType,
     pub icon_url: Option<String>,
+    #[serde(skip)]
+    status: Arc<Mutex<Option<GameStatus>>>,
 }
 impl Game {
     pub fn new(key: &str, lines: &mut std::str::Lines) -> Result<Game, STError> {
@@ -82,6 +89,7 @@ impl Game {
                             }
                             _ => None,
                         },
+                        status: Arc::new(Mutex::new(None)),
                     };
                     return Ok(game);
                 }
@@ -89,15 +97,38 @@ impl Game {
         }
         Err(STError::Problem("Could not extract game.".to_string()))
     }
+
+    pub fn get_status(&self) -> Option<GameStatus> {
+        let status = self.status.lock().unwrap();
+        (*status).clone()
+    }
+
+    pub fn update_status(self, new_status: GameStatus) {
+        let mut status = self.status.lock().unwrap();
+        *status = Some(new_status);
+    }
+
+    pub fn move_with_status(game: Game, maybe_status: Option<GameStatus>) -> Game {
+        Game {
+            status: Arc::new(Mutex::new(maybe_status)),
+            ..game
+        }
+    }
 }
 
 impl Named for Game {
     fn get_name(&self) -> String {
-        self.name.clone()
+        // Slow, and a hack- but whatever.
+        let config = Config::new().unwrap();
+        if config.favorite_games.contains(&self.id) {
+            format!("♡ {}", self.name.clone())
+        } else {
+            self.name.clone()
+        }
     }
 
     fn is_valid(&self) -> bool {
-        // Slow, and a hack- but whatever.
+        // Wooowww, I hate this. Could be worse though?
         let config = Config::new().unwrap();
         !&config.hidden_games.contains(&self.id) && config.allowed_games.contains(&self.game_type)
     }

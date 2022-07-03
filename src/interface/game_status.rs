@@ -1,5 +1,6 @@
 use crate::util::{error::STError, parser::*};
 
+#[derive(PartialEq, Debug, Clone)]
 pub struct GameStatus {
     pub state: String,
     pub installdir: String,

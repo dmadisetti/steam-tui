@@ -7,7 +7,7 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
-use crate::utils::log::log;
+use crate::util::log::log;
 
 use termion::event::Key;
 use termion::input::TermRead;
@@ -22,6 +22,7 @@ pub enum Event<I> {
 pub struct Events {
     rx: mpsc::Receiver<Event<Key>>,
     stop: Arc<AtomicBool>,
+    debounce: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -32,7 +33,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            tick_rate: Duration::from_millis(150),
+            tick_rate: Duration::from_millis(500),
         }
     }
 }
@@ -45,22 +46,21 @@ impl Events {
     pub fn with_config(config: Config) -> Events {
         let (tx, rx) = mpsc::channel();
         let stop = Arc::new(AtomicBool::new(false));
-        let release = Arc::new(AtomicBool::new(false));
+        let debounce = Arc::new(AtomicBool::new(true));
 
         let _input_handle = {
             let tx = tx.clone();
             let stop = stop.clone();
-            let release = release.clone();
+            let debounce = debounce.clone();
             thread::spawn(move || {
                 let stdin = io::stdin();
                 for key in stdin.keys().flatten() {
-
-                    if release.load(Ordering::Relaxed) {
+                    if debounce.load(Ordering::Relaxed) {
                         if let Err(err) = tx.send(Event::Input(key)) {
                             log!(err);
                             return;
                         }
-                        release.store(false, Ordering::Relaxed);
+                        debounce.store(false, Ordering::Relaxed);
                     }
                     if stop.load(Ordering::Relaxed) {
                         return;
@@ -70,19 +70,21 @@ impl Events {
         };
         let _tick_handle = {
             let stop = stop.clone();
-            let release = release.clone();
             thread::spawn(move || loop {
                 if tx.send(Event::Tick).is_err() {
                     break;
                 }
                 thread::sleep(config.tick_rate);
-                release.store(true, Ordering::Relaxed);
                 if stop.load(Ordering::Relaxed) {
                     return;
                 }
             })
         };
-        Events { rx, stop }
+        Events { rx, stop, debounce }
+    }
+
+    pub fn release(&self) {
+        self.debounce.store(true, Ordering::Relaxed);
     }
 
     pub fn next(&self) -> Result<Event<Key>, mpsc::RecvError> {

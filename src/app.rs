@@ -1,9 +1,9 @@
 extern crate pretty_bytes;
 
-use crate::util::stateful::StatefulList;
+use crate::util::stateful::{Named, StatefulList};
 
 use crate::config::Config;
-use crate::interface::{game::Game, game_status::GameStatus};
+use crate::interface::game::Game;
 
 use pretty_bytes::converter::convert;
 
@@ -55,6 +55,7 @@ const SPLASH: &str = r#"
 pub struct App {
     pub mode: Mode,
     pub user: String,
+    pub highlight: Color,
 }
 
 #[derive(PartialEq, Clone)]
@@ -71,6 +72,7 @@ pub enum Mode {
 impl App {
     pub fn new(config: &Config) -> App {
         let user = config.default_user.clone();
+        let highlight = config.highlight;
         App {
             mode: if user.is_empty() {
                 Mode::Login
@@ -78,6 +80,7 @@ impl App {
                 Mode::Loading
             },
             user,
+            highlight,
         }
     }
 
@@ -123,6 +126,14 @@ impl App {
             "steam-tui".to_string(),
             SPLASH.to_string(),
             Alignment::Center,
+        )
+    }
+
+    pub fn build_patience() -> Paragraph<'static> {
+        App::build_infobox(
+            "Welcome".to_string(),
+            "Checking cache (on load, you can press 'r' to invalidate cache)".to_string(),
+            Alignment::Left,
         )
     }
 
@@ -194,10 +205,9 @@ impl App {
     }
 
     pub fn render_games<'a>(
+        highlight: Color,
         game_list: &StatefulList<Game>,
-        status: Option<GameStatus>,
     ) -> (List<'a>, Table<'a>) {
-
         let games = Block::default()
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White))
@@ -208,16 +218,27 @@ impl App {
             .activated()
             .iter()
             .map(|game| {
+                let fg = {
+                    if let Some(status) = game.get_status() {
+                        if status.state == "uninstalled" {
+                            Color::DarkGray
+                        } else {
+                            Color::White
+                        }
+                    } else {
+                        Color::DarkGray
+                    }
+                };
                 ListItem::new(Spans::from(vec![Span::styled(
-                    game.name.clone(),
-                    Style::default(),
+                    game.get_name(),
+                    Style::default().fg(fg),
                 )]))
             })
             .collect();
 
         let list = List::new(items).block(games).highlight_style(
             Style::default()
-                .bg(Color::Green)
+                .bg(highlight)
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         );
@@ -239,7 +260,7 @@ impl App {
                     ]),
                     Row::new(vec![
                         Cell::from(Span::raw(selected.id.to_string())),
-                        Cell::from(Span::raw(selected.name.clone())),
+                        Cell::from(Span::raw(selected.get_name())),
                     ]),
                     spacer.clone(),
                 ];
@@ -257,7 +278,7 @@ impl App {
                         Cell::from(Span::raw(value.clone())),
                     ]));
                 }
-                if let Some(status) = status {
+                if let Some(status) = selected.get_status() {
                     table.push(spacer.clone());
                     for &(heading, value) in &[
                         ("State", &status.state),
