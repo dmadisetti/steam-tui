@@ -245,6 +245,8 @@ impl App {
 
         let details = match game_list.selected() {
             Some(selected) => {
+                selected.query_proton();
+
                 let spacer = Row::new(vec![Cell::from(Span::raw(" "))]);
                 // Construct table head (id, name)
                 let mut table = vec![
@@ -269,6 +271,7 @@ impl App {
                     ("Homepage", &selected.homepage),
                     ("Developer", &selected.developer),
                     ("Publisher", &selected.publisher),
+                    ("Proton Tier", &selected.get_proton()),
                 ] {
                     table.push(Row::new(vec![
                         Cell::from(Span::styled(

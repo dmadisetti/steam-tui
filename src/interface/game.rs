@@ -1,9 +1,12 @@
+use std::thread;
+
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::interface::game_status::GameStatus;
 
 use crate::interface::executable::Executable;
+use crate::interface::proton_data;
 use crate::util::{error::STError, parser::*, stateful::Named};
 
 use crate::config::Config;
@@ -36,6 +39,8 @@ pub struct Game {
     pub executable: Vec<Executable>,
     pub game_type: GameType,
     pub icon_url: Option<String>,
+    #[serde(skip)]
+    proton_tier: Arc<Mutex<Option<String>>>,
     #[serde(skip)]
     status: Arc<Mutex<Option<GameStatus>>>,
 }
@@ -89,6 +94,7 @@ impl Game {
                             }
                             _ => None,
                         },
+                        proton_tier: Arc::new(Mutex::new(None)),
                         status: Arc::new(Mutex::new(None)),
                     };
                     return Ok(game);
@@ -96,6 +102,33 @@ impl Game {
             }
         }
         Err(STError::Problem("Could not extract game.".to_string()))
+    }
+
+    pub fn query_proton(&self) {
+        let guard = {
+            let mut tier = self.proton_tier.lock().unwrap();
+            if None == *tier {
+                *tier = Some("-".to_string());
+                true
+            } else {
+                false
+            }
+        };
+        if guard {
+            let reference = self.proton_tier.clone();
+            let id = self.id;
+            thread::spawn(move || {
+                if let Some(response) = proton_data::ProtonData::get(id) {
+                    let mut status = reference.lock().unwrap();
+                    *status = Some(response.format());
+                }
+            });
+        }
+    }
+
+    pub fn get_proton(&self) -> String {
+        let status = self.proton_tier.lock().unwrap();
+        (*status).clone().unwrap_or_else(||"-".to_string())
     }
 
     pub fn get_status(&self) -> Option<GameStatus> {
