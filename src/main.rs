@@ -14,10 +14,10 @@ use steam_tui::util::stateful::StatefulList;
 use steam_tui::app::{App, Mode};
 use steam_tui::client::{Client, State};
 use steam_tui::config::Config;
-use steam_tui::interface::Game;
+use steam_tui::interface::game::Game;
 
 // why isn't this in stdlib for floats?
-fn min(a :f32, b :f32) -> f32 {
+fn min(a: f32, b: f32) -> f32 {
     if a < b {
         return a;
     }
@@ -31,6 +31,12 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
+    terminal.draw(|frame| {
+        let layout = App::build_layout();
+        let placement = layout.split(frame.size());
+        frame.render_widget(App::build_splash(), placement[0]);
+        frame.render_widget(App::build_patience(), placement[1]);
+    })?;
 
     let mut img: Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>> = None;
 
@@ -43,8 +49,16 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
     if !app.user.is_empty() {
         client.login(&app.user)?;
     }
+
+    // Attempt to load from cache. If not, continue as usual.
     let mut game_list: StatefulList<Game> = StatefulList::new();
-    game_list.restart();
+    match client.games() {
+        Ok(games) => {
+            game_list = StatefulList::with_items(games);
+            app.mode = Mode::Normal;
+        }
+        _ => game_list.restart(),
+    }
 
     loop {
         terminal.draw(|frame| {
@@ -70,18 +84,10 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     frame.render_widget(App::build_splash(), placement[0]);
                 }
                 _ => {
-                    let selected: i32 = match game_list.selected() {
-                        Some(game) => game.id as i32,
-                        None => 0,
-                    };
-                    let status = match client.status(selected) {
-                        Ok(status) => Some(status),
-                        _ => None,
-                    };
                     let game_layout = App::build_game_layout();
                     let image_layout = App::build_image_layout();
 
-                    let (left, right) = App::render_games(&game_list, status);
+                    let (left, right) = App::render_games(app.highlight, &game_list);
                     let game_placement = game_layout.split(placement[0]);
                     // Incorrect image placement leads to hard crash. Explicitly calculate bounds
                     // here.
@@ -96,7 +102,10 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             // Height is counted by row, and there are 10 lines of info.
                             let height = min((offset_y as f32) - 10.0, 80.0);
                             // Take minium, but respect aspect ratio.
-                            (min(width, height*2.0) as u16, min(height, width/2.0) as u16)
+                            (
+                                min(width, height * 2.0) as u16,
+                                min(height, width / 2.0) as u16,
+                            )
                         };
                         image_layout.split(Rect {
                             x: offset_x - width,
@@ -152,7 +161,31 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Key::Char('\n') => {
                         if let Some(game) = game_list.selected() {
-                            client.run(game.id, &game.launch)?;
+                            client.run(game)?;
+                        }
+                    }
+                    Key::Char('f') => {
+                        if let Some(game) = game_list.selected() {
+                            if config.favorite_games.contains(&game.id) {
+                                config.favorite_games.retain(|&x| x != game.id);
+                            } else {
+                                config.favorite_games.push(game.id);
+                            }
+                            Config::save(&config)?;
+                        }
+                    }
+                    Key::Char('F') => {
+                        // Hard refresh to restart games, since bad index can mess things up.
+                        game_list = StatefulList::with_items(client.games()?);
+                        game_list.query = "♡ ".to_string();
+                        app.mode = Mode::Searched;
+                    }
+                    Key::Char('H') => {
+                        if let Some(game) = game_list.selected() {
+                            config.hidden_games.push(game.id);
+                            Config::save(&config)?;
+                            game_list.previous();
+                            img = update_img(&game_list.selected());
                         }
                     }
                     Key::Char(' ') => {
@@ -160,7 +193,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Key::Char('d') => {
                         if let Some(game) = game_list.selected() {
-                            client.install(game.id as i32)?;
+                            client.install(game)?;
                         }
                     }
                     Key::Esc => {
@@ -227,6 +260,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 _ => {}
             }
+            events.release();
         }
         if app.mode == Mode::Loading {
             match client.get_state()? {

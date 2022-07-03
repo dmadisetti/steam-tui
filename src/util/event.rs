@@ -7,6 +7,8 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
+use crate::util::log::log;
+
 use termion::event::Key;
 use termion::input::TermRead;
 
@@ -20,19 +22,18 @@ pub enum Event<I> {
 pub struct Events {
     rx: mpsc::Receiver<Event<Key>>,
     stop: Arc<AtomicBool>,
+    debounce: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
-    pub exit_key: Key,
     pub tick_rate: Duration,
 }
 
 impl Default for Config {
     fn default() -> Config {
         Config {
-            exit_key: Key::Char('q'),
-            tick_rate: Duration::from_millis(250),
+            tick_rate: Duration::from_millis(500),
         }
     }
 }
@@ -45,15 +46,21 @@ impl Events {
     pub fn with_config(config: Config) -> Events {
         let (tx, rx) = mpsc::channel();
         let stop = Arc::new(AtomicBool::new(false));
+        let debounce = Arc::new(AtomicBool::new(true));
+
         let _input_handle = {
             let tx = tx.clone();
             let stop = stop.clone();
+            let debounce = debounce.clone();
             thread::spawn(move || {
                 let stdin = io::stdin();
                 for key in stdin.keys().flatten() {
-                    if let Err(err) = tx.send(Event::Input(key)) {
-                        eprintln!("{}", err);
-                        return;
+                    if debounce.load(Ordering::Relaxed) {
+                        if let Err(err) = tx.send(Event::Input(key)) {
+                            log!(err);
+                            return;
+                        }
+                        debounce.store(false, Ordering::Relaxed);
                     }
                     if stop.load(Ordering::Relaxed) {
                         return;
@@ -73,7 +80,11 @@ impl Events {
                 }
             })
         };
-        Events { rx, stop }
+        Events { rx, stop, debounce }
+    }
+
+    pub fn release(&self) {
+        self.debounce.store(true, Ordering::Relaxed);
     }
 
     pub fn next(&self) -> Result<Event<Key>, mpsc::RecvError> {

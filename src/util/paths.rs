@@ -1,4 +1,5 @@
 use crate::util::error::STError;
+use crate::util::log::log;
 
 use std::fs::File;
 use std::io::Write;
@@ -57,7 +58,7 @@ pub fn icon_directory() -> Result<PathBuf, STError> {
 pub fn steam_directory() -> Result<PathBuf, STError> {
     let dir = match env::var("STEAM_APP_DIR") {
         Ok(dir) => dir,
-        _ => "~/.steam/steam/steamapps/common/".to_string(),
+        _ => "~/.steam/steam/Steamapps/common/".to_string(),
     };
     mkdir(dir)
 }
@@ -113,6 +114,7 @@ pub fn executable_exists(executable: &str) -> Result<PathBuf, STError> {
     let dir = steam_directory()?;
     let executable = Path::new(executable);
     let script_path = dir.join(executable);
+    log!(script_path);
     if script_path.exists() {
         Ok(script_path)
     } else {
@@ -171,4 +173,9 @@ pub fn cache_location() -> Result<PathBuf, STError> {
     let cache_path = dir.join(cache_path);
     touch(&cache_path)?;
     Ok(cache_path)
+}
+
+pub fn invalidate_cache() -> Result<(), STError> {
+    fs::remove_file(cache_location()?)?;
+    Ok(())
 }
