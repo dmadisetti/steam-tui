@@ -6,7 +6,7 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils, mach-nix }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
@@ -15,7 +15,7 @@
         };
       in
       rec {
-        devShell = with pkgs;
+        devShells.default = with pkgs;
           pkgs.mkShell {
             packages = [
               # build
@@ -60,6 +60,6 @@
             };
           };
 
-        defaultApp = steam-tui;
+        packages.default = steam-tui;
       });
 }

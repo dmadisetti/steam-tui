@@ -48,8 +48,8 @@ found.
 ~Because why not? Also, the Steam client seems to break on my Arch build. I have
 a GT 610, and barely anything graphical works- this is a nice work around.~
 
-**Update**, I got rid of the 610 (let's go 1660), but moved to NixOS and the steam
-client still doesn't work lol.
+**Update**, I got rid of the 610 (let's go 1660), but moved to NixOS and
+Wayland and the steam client still doesn't work lol.
 
 ## Contributing
 
@@ -59,6 +59,13 @@ Multiverse Time Travel](https://www.5dchesswithmultiversetimetravel.com/), so
 additional work on this project is moot. If you [buy me a
 coffee](https://github.com/sponsors/dmadisetti), I'd be happy to sink some more
 time into this.
+
+### Sponsors
+
+Thank you to those who have heeded my call for more coffee!
+
+ - @MathiasSven (sponsored minor update 0.2.1)
+ - @vaelund (sponsored major update 0.2.0)
 
 ## Missing Features
 

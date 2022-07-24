@@ -1296,7 +1296,7 @@ dependencies = [
 
 [[package]]
 name = "steam-tui"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "atty",
  "fuzzy-matcher",
@@ -1517,9 +1517,9 @@ dependencies = [
 
 [[package]]
 name = "tui-image-rgba-updated"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "036501712d0fdc10a63c10e98e32c4990eeced3cbe5b70f84675a13067f64315"
+checksum = "a3529ea31c59d915e2cf87cc7138463fc21292e6593bf0ca22f5d077ff56448e"
 dependencies = [
  "failure",
  "image",

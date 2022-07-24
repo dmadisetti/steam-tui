@@ -1,6 +1,6 @@
 [package]
 name = "steam-tui"
-version = "0.2.0"
+version = "0.2.1"
 description = "TUI client for steamcmd."
 readme = "README.md"
 authors = ["madisetti <madisetti@jhu.edu>"]
@@ -34,4 +34,4 @@ atty = "0.2"
 image = "0.24"
 
 [dependencies.tui-image-rgba-updated]
-version = "0.2.1"
+version = "0.2.2"
