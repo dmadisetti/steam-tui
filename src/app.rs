@@ -144,7 +144,6 @@ impl App {
             .block(
                 Block::default()
                     .borders(Borders::all())
-                    .style(Style::default().fg(Color::White))
                     .title(title)
                     .border_type(BorderType::Plain),
             )
@@ -210,7 +209,6 @@ impl App {
     ) -> (List<'a>, Table<'a>) {
         let games = Block::default()
             .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
             .title("Games")
             .border_type(BorderType::Plain);
 
@@ -218,30 +216,27 @@ impl App {
             .activated()
             .iter()
             .map(|game| {
-                let fg = {
+                let modifier = {
                     if let Some(status) = game.get_status() {
                         if status.state == "uninstalled" || status.state.contains("Failed") {
-                            Color::DarkGray
+                            Modifier::DIM
                         } else {
-                            Color::White
+                            Modifier::BOLD
                         }
                     } else {
-                        Color::DarkGray
+                        Modifier::DIM
                     }
                 };
                 ListItem::new(Spans::from(vec![Span::styled(
                     game.get_name(),
-                    Style::default().fg(fg),
+                    Style::default().add_modifier(modifier),
                 )]))
             })
             .collect();
 
-        let list = List::new(items).block(games).highlight_style(
-            Style::default()
-                .bg(highlight)
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        );
+        let list = List::new(items)
+            .block(games)
+            .highlight_style(Style::default().bg(highlight).add_modifier(Modifier::BOLD));
 
         let details = match game_list.selected() {
             Some(selected) => {
@@ -301,7 +296,6 @@ impl App {
                     .block(
                         Block::default()
                             .borders(Borders::ALL)
-                            .style(Style::default().fg(Color::White))
                             .title("Detail")
                             .border_type(BorderType::Plain),
                     )

@@ -3,7 +3,10 @@ extern crate steam_tui;
 use std::io;
 
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use tui::style::{Color, Style};
 use tui::{backend::TermionBackend, layout::Rect, Terminal};
+
+use terminal_light;
 
 use tui_image_rgba_updated::{ColorMode, Image};
 
@@ -30,6 +33,11 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let stdout = AlternateScreen::from(stdout);
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
+    let terminal_bg = terminal_light::background_color()
+        .map(|c| c.rgb())
+        .map(|c| Color::Rgb(c.r, c.g, c.b))
+        .unwrap_or(Color::Gray);
+
     terminal.clear()?;
     terminal.draw(|frame| {
         let layout = App::build_layout();
@@ -119,7 +127,9 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     frame.render_widget(right, game_placement[1]);
                     if let Some(image) = img.clone() {
                         frame.render_widget(
-                            Image::with_img(image).color_mode(ColorMode::Rgba),
+                            Image::with_img(image)
+                                .color_mode(ColorMode::Rgba)
+                                .style(Style::default().bg(terminal_bg)),
                             image_placement[0],
                         )
                     }

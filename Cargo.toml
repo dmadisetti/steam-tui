@@ -21,6 +21,7 @@ serde = {version = "1.0", features = ["derive"] }
 
 termion = { version = "1.5"}
 tui = { version = "0.18", default-features = false, features = ['termion', 'serde'] }
+terminal-light = "1.0.0"
 
 fuzzy-matcher = "0.3.7"
 lazy_static = "1.4.0"
