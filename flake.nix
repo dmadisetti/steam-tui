@@ -36,6 +36,7 @@
 
               # misc
               wine
+              proton-caller
               python3
               lutris
             ];
@@ -51,8 +52,21 @@
               openssl
               pkgconfig
             ];
-            packages = [
+            buildInputs = [
               steamcmd
+            ];
+            # NOTE: Copied from pkgs.
+            preFixup = ''
+              mv $out/bin/steam-tui $out/bin/.steam-tui-unwrapped
+              cat > $out/bin/steam-tui <<EOF
+              #!${runtimeShell}
+              export PATH=${steamcmd}/bin:\$PATH
+              exec ${steam-run}/bin/steam-run $out/bin/.steam-tui-unwrapped '\$@'
+              EOF
+              chmod +x $out/bin/steam-tui
+            '';
+            checkFlags = [
+              "--skip=impure"
             ];
             PKG_CONFIG_PATH = "${openssl.dev}/lib/pkgconfig";
             cargoLock = {

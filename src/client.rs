@@ -555,8 +555,9 @@ mod tests {
     use std::sync::Arc;
     use std::sync::Mutex;
 
+    // Impure cases call to `steamcmd` which requires FHS.
     #[test]
-    fn test_polluted_data() {
+    fn test_polluted_data_impure() {
         let (tx1, receiver) = channel();
         let (sender, rx2) = channel();
         Client::start_process(Arc::new(Mutex::new(State::LoggedOut)), tx1, rx2);
@@ -571,7 +572,7 @@ mod tests {
     }
 
     #[test]
-    fn test_implicit_line_ending() {
+    fn test_implicit_line_ending_impure() {
         let (tx1, receiver) = channel();
         let (sender, rx2) = channel();
         Client::start_process(Arc::new(Mutex::new(State::LoggedOut)), tx1, rx2);
