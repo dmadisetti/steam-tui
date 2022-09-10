@@ -9,8 +9,13 @@ use std::time::Duration;
 
 use crate::util::log::log;
 
-use termion::event::Key;
-use termion::input::TermRead;
+use crossterm::{
+    cursor::position,
+    event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode},
+    Result,
+};
 
 pub enum Event<I> {
     Input(I),

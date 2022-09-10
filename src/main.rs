@@ -2,7 +2,14 @@ extern crate steam_tui;
 
 use std::io;
 
-use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use crossterm::{
+    cursor::position,
+    event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode},
+    Result,
+};
+
 use tui::style::{Color, Style};
 use tui::{backend::TermionBackend, layout::Rect, Terminal};
 
@@ -28,10 +35,17 @@ fn min(a: f32, b: f32) -> f32 {
 }
 
 fn entry() -> Result<(), Box<dyn std::error::Error>> {
-    let stdout = io::stdout().into_raw_mode()?;
-    let stdout = MouseTerminal::from(stdout);
-    let stdout = AlternateScreen::from(stdout);
-    let backend = TermionBackend::new(stdout);
+
+    let crossterm = Crossterm::new();
+    #[allow(unused)]
+    let screen = RawScreen::into_raw_mode();
+    let input = crossterm.input();
+    let mut stdin = input.read_async();
+    let cursor = cursor();
+    let stdout = stdout();
+    crossterm::terminal::enable_raw_mode()?;
+    let backend = CrosstermBackend::new(stdout);
+
     let mut terminal = Terminal::new(backend)?;
     let terminal_bg = terminal_light::background_color()
         .map(|c| c.rgb())
