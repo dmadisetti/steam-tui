@@ -1,4 +1,3 @@
-use std::io;
 use std::sync::mpsc;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -10,11 +9,7 @@ use std::time::Duration;
 use crate::util::log::log;
 
 use crossterm::{
-    cursor::position,
-    event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode},
-    Result,
+    event::{read, Event as CrossEvent, KeyEvent, KeyCode},
 };
 
 pub enum Event<I> {
@@ -25,7 +20,7 @@ pub enum Event<I> {
 /// A small event handler that wrap termion input and tick events. Each event
 /// type is handled in its own thread and returned to a common `Receiver`
 pub struct Events {
-    rx: mpsc::Receiver<Event<Key>>,
+    rx: mpsc::Receiver<Event<KeyCode>>,
     stop: Arc<AtomicBool>,
     debounce: Arc<AtomicBool>,
 }
@@ -58,17 +53,21 @@ impl Events {
             let stop = stop.clone();
             let debounce = debounce.clone();
             thread::spawn(move || {
-                let stdin = io::stdin();
-                for key in stdin.keys().flatten() {
-                    if debounce.load(Ordering::Relaxed) {
-                        if let Err(err) = tx.send(Event::Input(key)) {
-                            log!(err);
+                //matching the key
+                loop {
+                    if let CrossEvent::Key(KeyEvent {
+                        code: kc, ..
+                    }) = read().unwrap() {
+                        if debounce.load(Ordering::Relaxed) {
+                            if let Err(err) = tx.send(Event::Input(kc)) {
+                                log!(err);
+                                return;
+                            }
+                            debounce.store(false, Ordering::Relaxed);
+                        }
+                        if stop.load(Ordering::Relaxed) {
                             return;
                         }
-                        debounce.store(false, Ordering::Relaxed);
-                    }
-                    if stop.load(Ordering::Relaxed) {
-                        return;
                     }
                 }
             })
@@ -92,7 +91,7 @@ impl Events {
         self.debounce.store(true, Ordering::Relaxed);
     }
 
-    pub fn next(&self) -> Result<Event<Key>, mpsc::RecvError> {
+    pub fn next(&self) -> Result<Event<KeyCode>, mpsc::RecvError> {
         self.rx.recv()
     }
 }
