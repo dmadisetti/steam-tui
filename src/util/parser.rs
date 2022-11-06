@@ -166,14 +166,15 @@ mod tests {
     #[test]
     fn test_parse_update_basic() {
         let line = "\u{1b}[0m Update state (0x3) reconfiguring, progress: 0.00 (0 / 0)";
-        match *INSTALL_LEX.tokenize(line).as_slice(){
+        match *INSTALL_LEX.tokenize(line).as_slice() {
             ["Update", "0", "0"] => {}
             _ => panic!("Matched {:?}", INSTALL_LEX.tokenize(line)),
         }
     }
     #[test]
     fn test_parse_update() {
-        let line = "\u{1b}[0m Update state (0x5) verifying install, progress: 0.00 (445476 / 12780261578)";
+        let line =
+            "\u{1b}[0m Update state (0x5) verifying install, progress: 0.00 (445476 / 12780261578)";
         match *INSTALL_LEX.tokenize(line).as_slice() {
             ["Update", "445476", "12780261578"] => {}
             _ => panic!("Matched {:?}", INSTALL_LEX.tokenize(line)),
@@ -181,7 +182,8 @@ mod tests {
     }
     #[test]
     fn test_parse_update_continue() {
-        let line = " Update state (0x5) verifying install, progress: 99.20 (12677647126 / 12780261578)";
+        let line =
+            " Update state (0x5) verifying install, progress: 99.20 (12677647126 / 12780261578)";
         match *INSTALL_LEX.tokenize(line).as_slice() {
             ["Update", "12677647126", "12780261578"] => {}
             _ => panic!("Matched {:?}", INSTALL_LEX.tokenize(line)),

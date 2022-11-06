@@ -55,12 +55,15 @@ impl SteamCmd {
     }
 
     pub fn script(script: &str) -> Result<SteamCmd, STError> {
-        SteamCmd::with_args_and_seperator(vec![
-            "+@ShutdownOnFailedCommand 1",
-            "+@NoPromptForPassword 1",
-            "+@sStartupScript",
-            &format!("runscript {}", script),
-        ], 0x0a)
+        SteamCmd::with_args_and_seperator(
+            vec![
+                "+@ShutdownOnFailedCommand 1",
+                "+@NoPromptForPassword 1",
+                "+@sStartupScript",
+                &format!("runscript {}", script),
+            ],
+            0x0a,
+        )
     }
     pub fn write(&mut self, line: &str) -> Result<(), STError> {
         // Strip line endings

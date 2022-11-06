@@ -2,14 +2,13 @@ extern crate steam_tui;
 
 use std::io;
 
-use crossterm::{
-    event::{KeyCode},
-};
+use crossterm::event::KeyCode;
 
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode,
+};
 use tui::style::{Color, Style};
 use tui::{backend::CrosstermBackend, layout::Rect, Terminal};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
-
 
 use terminal_light;
 
@@ -154,6 +153,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 Mode::Normal | Mode::Searched => match input {
                     KeyCode::Char('l') => {
                         app.mode = Mode::Login;
+                        terminal.show_cursor()?;
                         game_list.restart();
                     }
                     KeyCode::Char('q') => {
@@ -173,6 +173,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     KeyCode::Char('/') => {
                         app.mode = Mode::Searching;
+                        terminal.show_cursor()?;
                         game_list.unselect();
                     }
                     KeyCode::Char('\n') => {
@@ -246,7 +247,6 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     KeyCode::Char(c) => {
                         app.user.push(c);
-                        terminal.show_cursor()?;
                     }
                     _ => {}
                 },
@@ -266,7 +266,6 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                         game_list.restart();
                     }
                     KeyCode::Char(c) => {
-                        terminal.show_cursor()?;
                         game_list.query.push(c);
                         game_list.restart();
                         img = update_img(&game_list.selected());
@@ -301,6 +300,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 State::Failed => {
                     app.mode = Mode::Failed;
+                    terminal.show_cursor()?;
                 }
                 _ => {}
             }
@@ -310,6 +310,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     disable_raw_mode()?;
+    terminal.clear()?;
     Ok(())
 }
 

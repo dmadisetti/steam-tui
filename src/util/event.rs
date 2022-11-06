@@ -8,9 +8,7 @@ use std::time::Duration;
 
 use crate::util::log::log;
 
-use crossterm::{
-    event::{read, Event as CrossEvent, KeyEvent, KeyCode},
-};
+use crossterm::event::{read, Event as CrossEvent, KeyCode, KeyEvent};
 
 pub enum Event<I> {
     Input(I),
@@ -55,9 +53,7 @@ impl Events {
             thread::spawn(move || {
                 //matching the key
                 loop {
-                    if let CrossEvent::Key(KeyEvent {
-                        code: kc, ..
-                    }) = read().unwrap() {
+                    if let CrossEvent::Key(KeyEvent { code: kc, .. }) = read().unwrap() {
                         if debounce.load(Ordering::Relaxed) {
                             if let Err(err) = tx.send(Event::Input(kc)) {
                                 log!(err);
