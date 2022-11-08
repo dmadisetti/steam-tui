@@ -129,7 +129,7 @@ impl Game {
 
     pub fn get_proton(&self) -> String {
         let status = self.proton_tier.lock().unwrap();
-        (*status).clone().unwrap_or_else(||"-".to_string())
+        (*status).clone().unwrap_or_else(|| "-".to_string())
     }
 
     pub fn get_status(&self) -> Option<GameStatus> {

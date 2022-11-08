@@ -244,8 +244,14 @@ fn execute(
                                         let mut reference = status.lock().unwrap();
                                         *reference =
                                             Some(GameStatus::msg(&*reference, "Fully Installed"));
-                                        log!("Launching stdout:", &std::str::from_utf8(&output.stdout));
-                                        log!("Launching stderr:", &std::str::from_utf8(&output.stderr));
+                                        log!(
+                                            "Launching stdout:",
+                                            &std::str::from_utf8(&output.stdout)
+                                        );
+                                        log!(
+                                            "Launching stderr:",
+                                            &std::str::from_utf8(&output.stderr)
+                                        );
                                     }
                                     Err(err) => {
                                         let mut reference = status.lock().unwrap();

@@ -2,9 +2,13 @@ extern crate steam_tui;
 
 use std::io;
 
-use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use crossterm::event::KeyCode;
+
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode,
+};
 use tui::style::{Color, Style};
-use tui::{backend::TermionBackend, layout::Rect, Terminal};
+use tui::{backend::CrosstermBackend, layout::Rect, Terminal};
 
 use terminal_light;
 
@@ -28,11 +32,12 @@ fn min(a: f32, b: f32) -> f32 {
 }
 
 fn entry() -> Result<(), Box<dyn std::error::Error>> {
-    let stdout = io::stdout().into_raw_mode()?;
-    let stdout = MouseTerminal::from(stdout);
-    let stdout = AlternateScreen::from(stdout);
-    let backend = TermionBackend::new(stdout);
+    enable_raw_mode()?;
+    let stdout = io::stdout();
+    #[allow(unused)]
+    let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
+
     let terminal_bg = terminal_light::background_color()
         .map(|c| c.rgb())
         .map(|c| Color::Rgb(c.r, c.g, c.b))
@@ -141,40 +146,42 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
         if let Event::Input(input) = events.next()? {
             match app.mode {
                 Mode::Terminated(_) => {
-                    if let Key::Char('q') = input {
+                    if let KeyCode::Char('q') = input {
                         break;
                     }
                 }
                 Mode::Normal | Mode::Searched => match input {
-                    Key::Char('l') => {
+                    KeyCode::Char('l') => {
                         app.mode = Mode::Login;
+                        terminal.show_cursor()?;
                         game_list.restart();
                     }
-                    Key::Char('q') => {
+                    KeyCode::Char('q') => {
                         break;
                     }
-                    Key::Char('r') => {
+                    KeyCode::Char('r') => {
                         app.mode = Mode::Loading;
                         client.restart()?;
                     }
-                    Key::Down | Key::Char('j') | Key::Char('s') => {
+                    KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('s') => {
                         game_list.next();
                         img = update_img(&game_list.selected());
                     }
-                    Key::Up | Key::Char('k') | Key::Char('w') => {
+                    KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('w') => {
                         game_list.previous();
                         img = update_img(&game_list.selected());
                     }
-                    Key::Char('/') => {
+                    KeyCode::Char('/') => {
                         app.mode = Mode::Searching;
+                        terminal.show_cursor()?;
                         game_list.unselect();
                     }
-                    Key::Char('\n') => {
+                    KeyCode::Char('\n') => {
                         if let Some(game) = game_list.selected() {
                             client.run(game)?;
                         }
                     }
-                    Key::Char('f') => {
+                    KeyCode::Char('f') => {
                         if let Some(game) = game_list.selected() {
                             if config.favorite_games.contains(&game.id) {
                                 config.favorite_games.retain(|&x| x != game.id);
@@ -184,13 +191,13 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             Config::save(&config)?;
                         }
                     }
-                    Key::Char('F') => {
+                    KeyCode::Char('F') => {
                         // Hard refresh to restart games, since bad index can mess things up.
                         game_list = StatefulList::with_items(client.games()?);
                         game_list.query = "♡ ".to_string();
                         app.mode = Mode::Searched;
                     }
-                    Key::Char('H') => {
+                    KeyCode::Char('H') => {
                         if let Some(game) = game_list.selected() {
                             config.hidden_games.push(game.id);
                             Config::save(&config)?;
@@ -198,22 +205,22 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             img = update_img(&game_list.selected());
                         }
                     }
-                    Key::Char(' ') => {
+                    KeyCode::Char(' ') => {
                         client.start_client()?;
                     }
-                    Key::Char('d') => {
+                    KeyCode::Char('d') => {
                         if let Some(game) = game_list.selected() {
                             client.install(game)?;
                         }
                     }
-                    Key::Esc => {
+                    KeyCode::Esc => {
                         app.mode = Mode::Normal;
                         game_list.query = "".to_string();
                     }
                     _ => {}
                 },
                 Mode::Login | Mode::Failed => match input {
-                    Key::Esc => {
+                    KeyCode::Esc => {
                         if client.is_logged_in()? {
                             if game_list.query.is_empty() {
                                 app.mode = Mode::Normal;
@@ -225,45 +232,48 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             break;
                         }
                     }
-                    Key::Char('\n') => {
+                    KeyCode::Char('\n') => {
                         let mut user = app.user.clone();
                         user.retain(|c| !c.is_whitespace());
+                        terminal.hide_cursor()?;
                         if !user.is_empty() {
                             app.mode = Mode::Loading;
                             config.default_user = user;
                             client.login(&app.user)?;
                         }
                     }
-                    Key::Backspace => {
+                    KeyCode::Backspace => {
                         app.user.pop();
                     }
-                    Key::Char(c) => {
+                    KeyCode::Char(c) => {
                         app.user.push(c);
                     }
                     _ => {}
                 },
                 Mode::Searching => match input {
-                    Key::Esc => {
+                    KeyCode::Esc => {
                         app.mode = Mode::Normal;
+                        terminal.hide_cursor()?;
                         game_list.query = "".to_string();
                         img = update_img(&game_list.selected());
                     }
-                    Key::Char('\n') => {
+                    KeyCode::Char('\n') => {
+                        terminal.hide_cursor()?;
                         app.mode = Mode::Searched;
                     }
-                    Key::Backspace => {
+                    KeyCode::Backspace => {
                         game_list.query.pop();
                         game_list.restart();
                     }
-                    Key::Char(c) => {
+                    KeyCode::Char(c) => {
                         game_list.query.push(c);
                         game_list.restart();
                         img = update_img(&game_list.selected());
                     }
-                    Key::Down => {
+                    KeyCode::Down => {
                         game_list.next();
                     }
-                    Key::Up => {
+                    KeyCode::Up => {
                         game_list.previous();
                     }
                     _ => {}
@@ -290,6 +300,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 State::Failed => {
                     app.mode = Mode::Failed;
+                    terminal.show_cursor()?;
                 }
                 _ => {}
             }
@@ -298,6 +309,8 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
             app.mode = Mode::Terminated(err);
         }
     }
+    disable_raw_mode()?;
+    terminal.clear()?;
     Ok(())
 }
 

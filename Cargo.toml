@@ -19,8 +19,8 @@ shellexpand = "2.1.0"
 serde_json = "1.0"
 serde = {version = "1.0", features = ["derive"] }
 
-termion = { version = "1.5"}
-tui = { version = "0.18", default-features = false, features = ['termion', 'serde'] }
+crossterm = { version = "0.25"}
+tui = { version = "0.18", default-features = false, features = ['crossterm', 'serde'] }
 terminal-light = "1.0.0"
 
 fuzzy-matcher = "0.3.7"

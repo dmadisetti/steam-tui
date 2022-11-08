@@ -1,4 +1,4 @@
-use crate::util::{error::STError, parser::*, paths::executable_join, log::log};
+use crate::util::{error::STError, log::log, parser::*, paths::executable_join};
 
 use std::cmp::Ordering;
 
