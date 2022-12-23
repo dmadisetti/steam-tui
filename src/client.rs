@@ -497,7 +497,7 @@ impl Client {
             .iter()
             .map(|game| Game::move_with_status((*game).clone(), self.status(game.id).ok()))
             .collect();
-        processed.dedup_by(|a, b| a.id == b.id || a.name == b.name);
+        processed.dedup_by(|a, b| a.id == b.id);
         Ok(processed)
     }
 
