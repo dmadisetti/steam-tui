@@ -493,10 +493,11 @@ impl Client {
     pub fn games(&self) -> Result<Vec<Game>, STError> {
         let db_content = fs::read_to_string(cache_location()?)?;
         let parsed: Vec<Game> = serde_json::from_str(&db_content)?;
-        let processed = parsed
+        let mut processed: Vec<Game> = parsed
             .iter()
             .map(|game| Game::move_with_status((*game).clone(), self.status(game.id).ok()))
             .collect();
+        processed.dedup_by(|a, b| a.id == b.id);
         Ok(processed)
     }
 

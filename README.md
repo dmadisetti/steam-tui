@@ -70,3 +70,5 @@ Thank you to those who have heeded my call for more coffee!
 ## Missing Features
 
 - Better handling for Proton games
+- Filter for only showing installed games
+
