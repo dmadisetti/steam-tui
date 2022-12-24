@@ -58,7 +58,7 @@ At this point, I am very much done with the project. I only really play
 Multiverse Time Travel](https://www.5dchesswithmultiversetimetravel.com/), so
 additional work on this project is moot. If you [buy me a
 coffee](https://github.com/sponsors/dmadisetti), I'd be happy to sink some more
-time into this. 
+time into this.
 
 ### Sponsors
 
