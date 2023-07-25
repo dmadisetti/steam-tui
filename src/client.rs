@@ -302,16 +302,7 @@ fn execute(
                             // Extract licenses
                             games = Vec::new();
                             let licenses = response.to_string();
-                            let keys = licenses
-                                .lines()
-                                .enumerate()
-                                .filter(|(i, _)| i % 4 == 0)
-                                .map(|(_, l)| match *LICENSE_LEX.tokenize(l).as_slice() {
-                                    ["packageID", id] => id.parse::<i32>().unwrap_or(-1),
-                                    _ => -1,
-                                })
-                                .filter(|x| x >= &0)
-                                .collect::<Vec<i32>>();
+                            let keys = keys_from_licenses(licenses);
                             let total = keys.len();
                             updated += total as i32;
                             for key in keys {
@@ -553,13 +544,30 @@ impl Drop for Client {
         let _ = receiver.recv();
     }
 }
+
+// Just some helpers broken out for testing
+fn keys_from_licenses(licenses: String) -> Vec<i32> {
+    licenses
+        .lines()
+        .enumerate()
+        .filter(|(i, _)| i % 4 == 0)
+        .map(|(_, l)| match *LICENSE_LEX.tokenize(l).as_slice() {
+            ["packageID", id] => id.parse::<i32>().unwrap_or(-1),
+            _ => -1,
+        })
+        .filter(|x| x >= &0)
+        .collect::<Vec<i32>>()
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::client::{Client, Command, State};
+    use crate::client::{Client, Command, State, keys_from_licenses};
     use crate::util::error::STError;
     use std::sync::mpsc::channel;
     use std::sync::Arc;
     use std::sync::Mutex;
+
+    use std::fs;
 
     // Impure cases call to `steamcmd` which requires FHS.
     #[test]
@@ -598,6 +606,15 @@ mod tests {
         let result = client.login("");
         if let Err(STError::Problem(expected)) = result {
             assert!(expected.contains(&"Blank".to_string()));
+            return;
+        }
+        panic!("Failed to unwrap")
+    }
+    #[test]
+    fn test_license_parse() {
+        if let Ok(licenses) = fs::read_to_string("/home/dylan/src/steam-tui/licenses_print.txt") {
+            let keys = keys_from_licenses(licenses);
+            assert!(keys.len() > 0);
             return;
         }
         panic!("Failed to unwrap")
