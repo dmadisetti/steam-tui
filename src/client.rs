@@ -353,6 +353,18 @@ fn execute(
                             // Bug requires additional scan
                             // do a proper check here in case this is ever fixed.
                             // TODO if lines.len()
+                            // Iterate to scrub past Steam> prompt
+                            let mut response = response;
+                            log!(response);
+                            if response == "[0m" {
+                                cmd.write("")?;
+                                cmd.write("")?;
+                                while !response.starts_with("[0mAppID") {
+                                    if let Ok(buf) = cmd.maybe_next() {
+                                        response = String::from_utf8_lossy(&buf).into_owned().into();
+                                    }
+                                }
+                            }
                             let mut lines = response.lines();
 
                             match Game::new(key, &mut lines) {
