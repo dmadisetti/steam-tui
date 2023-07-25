@@ -334,7 +334,6 @@ fn execute(
                                                         "app_info_print {}",
                                                         key
                                                     )));
-                                                    queue.push_front(Command::Cli("#//skip".to_string()));
                                                 }
                                             }
                                         }
@@ -377,8 +376,6 @@ fn execute(
                             sender.send(response.to_string())?;
                             return Ok(());
                         }
-                        // Blanks needed because trailing cases sometimes happen
-                        ["#//skip"] => {}
                         _ => {
                             // Send back response for debugging reasons.
                             sender.send(response.to_string())?;
@@ -407,9 +404,13 @@ fn execute(
                     // Iterate to scrub past Steam> prompt
                     let buf = cmd.maybe_next()?;
                     let mut prompt = String::from_utf8_lossy(&buf);
-                    while prompt == "[0m" {
-                        let buf = cmd.maybe_next()?;
-                        prompt = String::from_utf8_lossy(&buf).into_owned().into();
+                    log!(prompt);
+                    while prompt != "[1m\nSteam>" {
+                        if let Ok(buf) = cmd.maybe_next() {
+                            prompt = String::from_utf8_lossy(&buf).into_owned().into();
+                        } else {
+                            cmd.write("")?;
+                        }
                     }
                 }
             }

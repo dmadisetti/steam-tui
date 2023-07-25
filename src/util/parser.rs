@@ -39,7 +39,6 @@ lazy_static! {
            (login)\s+(\w) |
            (info) |
            (quit) |
-           (#//skip) |
            (licenses_print) |
            (package_info_print)\s+(\d+) |
            (app_info_print)\s+(\d+) |
