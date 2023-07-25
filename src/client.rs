@@ -637,13 +637,4 @@ mod tests {
         }
         panic!("Failed to unwrap")
     }
-    #[test]
-    fn test_license_parse() {
-        if let Ok(licenses) = fs::read_to_string("/home/dylan/src/steam-tui/licenses_print.txt") {
-            let keys = keys_from_licenses(licenses);
-            assert!(keys.len() > 0);
-            return;
-        }
-        panic!("Failed to unwrap")
-    }
 }
