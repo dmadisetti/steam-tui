@@ -8,6 +8,8 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
+use crate::util::log::log;
+
 pub struct Lexer {
     regex: Regex,
 }
@@ -37,6 +39,7 @@ lazy_static! {
            (login)\s+(\w) |
            (info) |
            (quit) |
+           (#//skip) |
            (licenses_print) |
            (package_info_print)\s+(\d+) |
            (app_info_print)\s+(\d+) |
@@ -70,6 +73,7 @@ lazy_static! {
            \s*"([^"]+)"\s+"([^"]*)"\s* |
            \s*"([^"]+)"\s*$ |
            \s*(})\s*$ |
+           \s*[^}"].*$ |
            "#,
     );
 }
@@ -109,6 +113,8 @@ pub fn parse(block: &mut dyn Iterator<Item = &str>) -> Datum {
                 block.next();
                 map.insert(key.to_string(), parse(block));
             }
+            // Extra lines are sometimes present but do not match the SDL format.
+            // Skip them.
             _ => {}
         }
     }
@@ -121,6 +127,7 @@ mod tests {
     #[test]
     fn test_parse_data() {
         let mut block = r#"
+[0mAppID : <id>, change number : 19486115/0, last change : Mon Jul 24 13:12:25 2023
 "hmm"
 {
     "vdl" "format"

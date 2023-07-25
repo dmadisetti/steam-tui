@@ -289,6 +289,7 @@ fn execute(
                             } else {
                                 queue.push_front(Command::Cli("info".to_string()));
                             }
+                            log!("login");
                         }
                         ["info"] => {
                             account = match Account::new(&response.to_string()) {
@@ -297,6 +298,7 @@ fn execute(
                             };
                             let mut state = state.lock()?;
                             *state = State::Loaded(0, -2);
+                            log!("info");
                         }
                         ["licenses_print"] => {
                             // Extract licenses
@@ -313,6 +315,7 @@ fn execute(
                             }
                             let mut state = state.lock()?;
                             *state = State::Loaded(0, total as i32);
+                            log!("licenses_print");
                         }
                         ["package_info_print", key] => {
                             let mut lines = response.lines();
@@ -325,10 +328,13 @@ fn execute(
                                             if let Datum::Value(id) = wrapper {
                                                 let key = id.parse::<i32>().unwrap_or(-1);
                                                 if key >= 0 {
+                                                    // Blank because weird trailing cases
+                                                    // queue.push_front(Command::Cli(" ".to_string()));
                                                     queue.push_front(Command::Cli(format!(
                                                         "app_info_print {}",
                                                         key
                                                     )));
+                                                    queue.push_front(Command::Cli("#//skip".to_string()));
                                                 }
                                             }
                                         }
@@ -340,13 +346,26 @@ fn execute(
                                 State::Loaded(_, _) => {}
                                 _ => *state = State::Loaded(updated, queue.len() as i32),
                             }
+                            log!("package_info_print");
                         }
                         ["app_info_print", key] => {
-                            let mut lines = response.lines();
                             updated += 1;
-                            if let Ok(game) = Game::new(key, &mut lines) {
-                                games.push(game);
-                            }
+                            log!("Checking game");
+                            // Bug requires additional scan
+                            // do a proper check here in case this is ever fixed.
+                            // TODO if lines.len()
+                            let mut lines = response.lines();
+
+                            match Game::new(key, &mut lines) {
+                                Ok(game) => {
+                                    log!("got game");
+                                    games.push(game);
+                                    log!(key);
+                                }
+                                Err(err) => {
+                                    log!(err)
+                                }
+                            };
                         }
                         ["app_status", _id] => {
                             sender.send(response.to_string())?;
@@ -358,6 +377,8 @@ fn execute(
                             sender.send(response.to_string())?;
                             return Ok(());
                         }
+                        // Blanks needed because trailing cases sometimes happen
+                        ["#//skip"] => {}
                         _ => {
                             // Send back response for debugging reasons.
                             sender.send(response.to_string())?;
@@ -384,7 +405,12 @@ fn execute(
                         }
                     }
                     // Iterate to scrub past Steam> prompt
-                    let _ = cmd.maybe_next()?;
+                    let buf = cmd.maybe_next()?;
+                    let mut prompt = String::from_utf8_lossy(&buf);
+                    while prompt == "[0m" {
+                        let buf = cmd.maybe_next()?;
+                        prompt = String::from_utf8_lossy(&buf).into_owned().into();
+                    }
                 }
             }
         }

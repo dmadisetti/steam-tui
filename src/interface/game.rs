@@ -47,6 +47,7 @@ pub struct Game {
 impl Game {
     pub fn new(key: &str, lines: &mut std::str::Lines) -> Result<Game, STError> {
         let blank: Datum = Datum::Value("-".to_string());
+        log!(lines);
         if let Datum::Nest(map) = parse(lines) {
             if let Some(map) = map.get(key) {
                 let map = map.maybe_nest()?;
@@ -99,8 +100,16 @@ impl Game {
                         status: Arc::new(Mutex::new(None)),
                     };
                     return Ok(game);
+                } else {
+                    return Err(STError::Problem("File a github issue. Something may have changed in the Steam definition.".to_string()));
                 }
+            } else {
+              log!("Cannot get key", key);
+              log!(parse(lines));
             }
+        } else {
+            log!("Cannot get nest");
+            log!(parse(lines));
         }
         Err(STError::Problem("Could not extract game.".to_string()))
     }
