@@ -70,6 +70,7 @@ lazy_static! {
            \s*"([^"]+)"\s+"([^"]*)"\s* |
            \s*"([^"]+)"\s*$ |
            \s*(})\s*$ |
+           \s*[^}"].*$ |
            "#,
     );
 }
@@ -109,6 +110,8 @@ pub fn parse(block: &mut dyn Iterator<Item = &str>) -> Datum {
                 block.next();
                 map.insert(key.to_string(), parse(block));
             }
+            // Extra lines are sometimes present but do not match the SDL format.
+            // Skip them.
             _ => {}
         }
     }
@@ -121,6 +124,7 @@ mod tests {
     #[test]
     fn test_parse_data() {
         let mut block = r#"
+[0mAppID : <id>, change number : 19486115/0, last change : Mon Jul 24 13:12:25 2023
 "hmm"
 {
     "vdl" "format"

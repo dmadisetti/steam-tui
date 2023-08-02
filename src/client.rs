@@ -289,6 +289,7 @@ fn execute(
                             } else {
                                 queue.push_front(Command::Cli("info".to_string()));
                             }
+                            log!("login");
                         }
                         ["info"] => {
                             account = match Account::new(&response.to_string()) {
@@ -297,21 +298,13 @@ fn execute(
                             };
                             let mut state = state.lock()?;
                             *state = State::Loaded(0, -2);
+                            log!("info");
                         }
                         ["licenses_print"] => {
                             // Extract licenses
                             games = Vec::new();
                             let licenses = response.to_string();
-                            let keys = licenses
-                                .lines()
-                                .enumerate()
-                                .filter(|(i, _)| i % 4 == 0)
-                                .map(|(_, l)| match *LICENSE_LEX.tokenize(l).as_slice() {
-                                    ["packageID", id] => id.parse::<i32>().unwrap_or(-1),
-                                    _ => -1,
-                                })
-                                .filter(|x| x >= &0)
-                                .collect::<Vec<i32>>();
+                            let keys = keys_from_licenses(licenses);
                             let total = keys.len();
                             updated += total as i32;
                             for key in keys {
@@ -322,6 +315,7 @@ fn execute(
                             }
                             let mut state = state.lock()?;
                             *state = State::Loaded(0, total as i32);
+                            log!("licenses_print");
                         }
                         ["package_info_print", key] => {
                             let mut lines = response.lines();
@@ -349,13 +343,37 @@ fn execute(
                                 State::Loaded(_, _) => {}
                                 _ => *state = State::Loaded(updated, queue.len() as i32),
                             }
+                            log!("package_info_print");
                         }
                         ["app_info_print", key] => {
-                            let mut lines = response.lines();
                             updated += 1;
-                            if let Ok(game) = Game::new(key, &mut lines) {
-                                games.push(game);
+                            log!("Checking game");
+                            // Bug requires additional scan
+                            // do a proper check here in case this is ever fixed.
+                            // A bit of a hack, but will do for now.
+                            let mut response = response;
+                            log!(response);
+                            if response == "[0m" {
+                                cmd.write("")?;
+                                cmd.write("")?;
+                                while !response.starts_with("[0mAppID") {
+                                    if let Ok(buf) = cmd.maybe_next() {
+                                        response = String::from_utf8_lossy(&buf).into_owned().into();
+                                    }
+                                }
                             }
+                            let mut lines = response.lines();
+
+                            match Game::new(key, &mut lines) {
+                                Ok(game) => {
+                                    log!("got game");
+                                    games.push(game);
+                                    log!(key);
+                                }
+                                Err(err) => {
+                                    log!(err)
+                                }
+                            };
                         }
                         ["app_status", _id] => {
                             sender.send(response.to_string())?;
@@ -393,7 +411,16 @@ fn execute(
                         }
                     }
                     // Iterate to scrub past Steam> prompt
-                    let _ = cmd.maybe_next()?;
+                    let buf = cmd.maybe_next()?;
+                    let mut prompt = String::from_utf8_lossy(&buf);
+                    log!(prompt);
+                    while prompt != "[1m\nSteam>" {
+                        if let Ok(buf) = cmd.maybe_next() {
+                            prompt = String::from_utf8_lossy(&buf).into_owned().into();
+                        } else {
+                            cmd.write("")?;
+                        }
+                    }
                 }
             }
         }
@@ -554,9 +581,24 @@ impl Drop for Client {
         let _ = receiver.recv();
     }
 }
+
+// Just some helpers broken out for testing
+fn keys_from_licenses(licenses: String) -> Vec<i32> {
+    licenses
+        .lines()
+        .enumerate()
+        .filter(|(i, _)| i % 4 == 0)
+        .map(|(_, l)| match *LICENSE_LEX.tokenize(l).as_slice() {
+            ["packageID", id] => id.parse::<i32>().unwrap_or(-1),
+            _ => -1,
+        })
+        .filter(|x| x >= &0)
+        .collect::<Vec<i32>>()
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::client::{Client, Command, State};
+    use crate::client::{Client, Command, State, keys_from_licenses};
     use crate::util::error::STError;
     use std::sync::mpsc::channel;
     use std::sync::Arc;
