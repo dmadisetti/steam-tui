@@ -8,8 +8,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::util::log::log;
-
 pub struct Lexer {
     regex: Regex,
 }

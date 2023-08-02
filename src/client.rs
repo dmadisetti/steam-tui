@@ -328,8 +328,6 @@ fn execute(
                                             if let Datum::Value(id) = wrapper {
                                                 let key = id.parse::<i32>().unwrap_or(-1);
                                                 if key >= 0 {
-                                                    // Blank because weird trailing cases
-                                                    // queue.push_front(Command::Cli(" ".to_string()));
                                                     queue.push_front(Command::Cli(format!(
                                                         "app_info_print {}",
                                                         key
@@ -352,8 +350,7 @@ fn execute(
                             log!("Checking game");
                             // Bug requires additional scan
                             // do a proper check here in case this is ever fixed.
-                            // TODO if lines.len()
-                            // Iterate to scrub past Steam> prompt
+                            // A bit of a hack, but will do for now.
                             let mut response = response;
                             log!(response);
                             if response == "[0m" {
@@ -605,8 +602,6 @@ mod tests {
     use std::sync::mpsc::channel;
     use std::sync::Arc;
     use std::sync::Mutex;
-
-    use std::fs;
 
     // Impure cases call to `steamcmd` which requires FHS.
     #[test]

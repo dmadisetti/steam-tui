@@ -47,7 +47,6 @@ pub struct Game {
 impl Game {
     pub fn new(key: &str, lines: &mut std::str::Lines) -> Result<Game, STError> {
         let blank: Datum = Datum::Value("-".to_string());
-        log!(lines);
         if let Datum::Nest(map) = parse(lines) {
             if let Some(map) = map.get(key) {
                 let map = map.maybe_nest()?;
