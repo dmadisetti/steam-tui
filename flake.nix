@@ -1,23 +1,68 @@
 {
-  description = "Flake to manage projects + builds";
+  description = "steam-tui flake to manage projects + builds";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/master";
-    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          config.allowUnfree = true;
+  outputs = { self, nixpkgs, ... }@inputs:
+    let
+      forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.platforms.unix;
+
+      nixpkgsFor = forAllSystems (system: import nixpkgs {
+        inherit system;
+        config = {
+          allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
+            "steam"
+            "steamcmd"
+            "steam-original"
+            "steam-run"
+          ];
         };
-      in
-      rec {
-        devShells.default = with pkgs;
-          pkgs.mkShell {
-            packages = [
+      });
+    in
+    {
+      packages = forAllSystems (system:
+        let pkgs = nixpkgsFor.${system}; in {
+          steam-tui = with pkgs;
+            rustPlatform.buildRustPackage rec {
+              name = "steam-tui-dev";
+              pname = "steam-tui";
+              src = ./.;
+              nativeBuildInputs = [
+                openssl
+                pkgconfig
+              ];
+              buildInputs = [
+                steamcmd
+              ];
+              # NOTE: Copied from pkgs.
+              preFixup = ''
+                mv $out/bin/steam-tui $out/bin/.steam-tui-unwrapped
+                cat > $out/bin/steam-tui <<EOF
+                #!${runtimeShell}
+                export PATH=${steamcmd}/bin:\$PATH
+                exec ${steam-run}/bin/steam-run $out/bin/.steam-tui-unwrapped '\$@'
+                EOF
+                chmod +x $out/bin/steam-tui
+              '';
+              checkFlags = [
+                "--skip=impure"
+              ];
+              PKG_CONFIG_PATH = "${openssl.dev}/lib/pkgconfig";
+              cargoLock = {
+                lockFileContents = builtins.readFile ./Cargo.lock;
+              };
+            };
+
+          default = self.packages.${system}.steam-tui;
+        });
+
+      devShells = forAllSystems (system:
+        let pkgs = nixpkgsFor.${system}; in {
+          default = pkgs.mkShell {
+            inputsFrom = builtins.attrValues self.packages.${system};
+            buildIpunts = with pkgs; [
               # build
               rustfmt
               rustc
@@ -25,55 +70,17 @@
               clippy
               rustup
 
-              # deps
-              pkg-config
-              openssl
-
               # steam
               steam
-              steamcmd
               steam-run
 
               # misc
               wine
               proton-caller
               python3
-              lutris
             ];
-            STEAM_RUN_WRAPPER = "${steam-run}/bin/steam-run";
+            STEAM_RUN_WRAPPER = "${pkgs.steam-run}/bin/steam-run";
           };
-
-        steam-tui = with pkgs;
-          rustPlatform.buildRustPackage rec {
-            name = "steam-tui-dev";
-            pname = "steam-tui";
-            src = ./.;
-            nativeBuildInputs = [
-              openssl
-              pkgconfig
-            ];
-            buildInputs = [
-              steamcmd
-            ];
-            # NOTE: Copied from pkgs.
-            preFixup = ''
-              mv $out/bin/steam-tui $out/bin/.steam-tui-unwrapped
-              cat > $out/bin/steam-tui <<EOF
-              #!${runtimeShell}
-              export PATH=${steamcmd}/bin:\$PATH
-              exec ${steam-run}/bin/steam-run $out/bin/.steam-tui-unwrapped '\$@'
-              EOF
-              chmod +x $out/bin/steam-tui
-            '';
-            checkFlags = [
-              "--skip=impure"
-            ];
-            PKG_CONFIG_PATH = "${openssl.dev}/lib/pkgconfig";
-            cargoLock = {
-              lockFileContents = builtins.readFile ./Cargo.lock;
-            };
-          };
-
-        packages.default = steam-tui;
-      });
+        });
+    };
 }
