@@ -62,7 +62,7 @@
         let pkgs = nixpkgsFor.${system}; in {
           default = pkgs.mkShell {
             inputsFrom = builtins.attrValues self.packages.${system};
-            buildIpunts = with pkgs; [
+            buildInputs = with pkgs; [
               # build
               rustfmt
               rustc
