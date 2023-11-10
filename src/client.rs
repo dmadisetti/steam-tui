@@ -302,6 +302,10 @@ fn execute(
                         }
                         ["licenses_print"] => {
                             // Extract licenses
+                            if response == "[0m" {
+                                continue;
+                            }
+                            
                             games = Vec::new();
                             let licenses = response.to_string();
                             let keys = keys_from_licenses(licenses);

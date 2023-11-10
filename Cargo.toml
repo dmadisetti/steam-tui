@@ -1,6 +1,6 @@
 [package]
 name = "steam-tui"
-version = "0.2.1"
+version = "0.2.2"
 description = "TUI client for steamcmd."
 readme = "README.md"
 authors = ["madisetti <madisetti@jhu.edu>"]

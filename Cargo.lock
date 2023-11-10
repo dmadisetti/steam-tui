@@ -1316,7 +1316,7 @@ dependencies = [
 
 [[package]]
 name = "steam-tui"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "atty",
  "crossterm 0.25.0",
