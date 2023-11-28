@@ -31,7 +31,7 @@
               src = ./.;
               nativeBuildInputs = [
                 openssl
-                pkgconfig
+                pkg-config
               ];
               buildInputs = [
                 steamcmd
@@ -78,6 +78,9 @@
               wine
               proton-caller
               python3
+
+              # binary
+              self.packages.${system}.steam-tui
             ];
             STEAM_RUN_WRAPPER = "${pkgs.steam-run}/bin/steam-run";
           };
