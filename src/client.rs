@@ -65,6 +65,9 @@ fn execute(
         loop {
             match queue.pop_back() {
                 None => break,
+                // For flag reference see:
+                //   https://developer.valvesoftware.com/wiki/Command_line_options#Steam_.28Windows.29
+                //   and https://gist.github.com/davispuh/6600880
                 Some(Command::StartClient) => {
                     if !scan_port(STEAM_PORT) {
                         let (sender, termination) = channel();
@@ -228,11 +231,17 @@ fn execute(
                                 .map(|x| x.to_string())
                                 .collect::<Vec<String>>();
                             command.append(&mut args);
+                            log!("Finding entry");
                             let entry = match steam_run_wrapper() {
                                 Ok(wrapper) => wrapper.into_os_string().into_string().unwrap(),
                                 Err(STError::Problem(_)) => command.remove(0),
-                                Err(err) => return Err(err), // unwrap and rewrap to explicitly note this is an err.
+                                Err(err) => {
+                                    let mut reference = status.lock().unwrap();
+                                    *reference = Some(GameStatus::msg(&*reference, "Could not find entry program."));
+                                    return Err(err);
+                                }, // unwrap and rewrap to explicitly note this is an err.
                             };
+                            log!("Exits loop");
                             let status = status.clone();
                             thread::spawn(move || {
                                 {
@@ -264,6 +273,8 @@ fn execute(
                             });
                             launched = true;
                             break;
+                        } else {
+                            log!("Tried", launchable.executable);
                         }
                     }
                     if !launched {
@@ -283,7 +294,8 @@ fn execute(
                     let response = String::from_utf8_lossy(&buf);
                     match *INPUT_LEX.tokenize(&line).as_slice() {
                         ["login", _] => {
-                            if response.to_string().contains("Login Failure") {
+                            let response = response.to_string();
+                            if response.contains("Login Failure") || response.contains("FAILED") {
                                 let mut state = state.lock()?;
                                 *state = State::Failed;
                             } else {
@@ -305,7 +317,7 @@ fn execute(
                             if response == "[0m" {
                                 continue;
                             }
-                            
+
                             games = Vec::new();
                             let licenses = response.to_string();
                             let keys = keys_from_licenses(licenses);
@@ -362,7 +374,8 @@ fn execute(
                                 cmd.write("")?;
                                 while !response.starts_with("[0mAppID") {
                                     if let Ok(buf) = cmd.maybe_next() {
-                                        response = String::from_utf8_lossy(&buf).into_owned().into();
+                                        response =
+                                            String::from_utf8_lossy(&buf).into_owned().into();
                                     }
                                 }
                             }
@@ -602,7 +615,7 @@ fn keys_from_licenses(licenses: String) -> Vec<i32> {
 
 #[cfg(test)]
 mod tests {
-    use crate::client::{Client, Command, State, keys_from_licenses};
+    use crate::client::{keys_from_licenses, Client, Command, State};
     use crate::util::error::STError;
     use std::sync::mpsc::channel;
     use std::sync::Arc;

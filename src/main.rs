@@ -10,7 +10,7 @@ use crossterm::terminal::{
 use tui::style::{Color, Style};
 use tui::{backend::CrosstermBackend, layout::Rect, Terminal};
 
-use terminal_light;
+use terminal_light::background_color;
 
 use tui_image_rgba_updated::{ColorMode, Image};
 
@@ -38,7 +38,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let terminal_bg = terminal_light::background_color()
+    let terminal_bg = background_color()
         .map(|c| c.rgb())
         .map(|c| Color::Rgb(c.r, c.g, c.b))
         .unwrap_or(Color::Gray);
@@ -59,18 +59,21 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let events = Events::new();
     let client = Client::new();
 
-    if !app.user.is_empty() {
-        client.login(&app.user)?;
-    }
-
     // Attempt to load from cache. If not, continue as usual.
     let mut game_list: StatefulList<Game> = StatefulList::new();
+    let mut cached: bool = false;
     match client.games() {
         Ok(games) => {
             game_list = StatefulList::with_items(games);
-            app.mode = Mode::Normal;
+            app.mode = Mode::Loading;
+            cached = true;
         }
         _ => game_list.restart(),
+    }
+
+    // Login after cache load, since a failed login needs to show the failure screen.
+    if !app.user.is_empty() {
+        client.login(&app.user)?;
     }
 
     loop {
@@ -160,6 +163,9 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                         break;
                     }
                     KeyCode::Char('r') => {
+                        // Marked cache as false for the potential race condition
+                        // (you flush cache prior to login)
+                        cached = false;
                         app.mode = Mode::Loading;
                         client.restart()?;
                     }
@@ -176,7 +182,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                         terminal.show_cursor()?;
                         game_list.unselect();
                     }
-                    KeyCode::Char('\n') => {
+                    KeyCode::Char('\n') | KeyCode::Enter => {
                         if let Some(game) = game_list.selected() {
                             client.run(game)?;
                         }
@@ -232,7 +238,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             break;
                         }
                     }
-                    KeyCode::Char('\n') => {
+                    KeyCode::Char('\n') | KeyCode::Enter  => {
                         let mut user = app.user.clone();
                         user.retain(|c| !c.is_whitespace());
                         terminal.hide_cursor()?;
@@ -257,7 +263,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                         game_list.query = "".to_string();
                         img = update_img(&game_list.selected());
                     }
-                    KeyCode::Char('\n') => {
+                    KeyCode::Char('\n') | KeyCode::Enter  => {
                         terminal.hide_cursor()?;
                         app.mode = Mode::Searched;
                     }
@@ -280,12 +286,25 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 _ => {}
             }
+            // Need a hook to cancel if in loading mode.
+            if app.mode == Mode::Loading {
+                if let KeyCode::Char('q') = input {
+                    break;
+                }
+            }
             events.release();
         }
         if app.mode == Mode::Loading {
             match client.get_state()? {
                 State::Loaded(_, -2) => {
-                    client.load_games()?;
+                    // If loaded from cache then just used the cache
+                    if cached {
+                        // Importantly, mark cached as false to allow reloads
+                        cached = false;
+                        app.mode = Mode::Normal;
+                    } else {
+                        client.load_games()?;
+                    }
                 }
                 State::LoggedIn => {
                     config.save()?;
