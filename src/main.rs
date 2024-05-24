@@ -4,9 +4,7 @@ use std::io;
 
 use crossterm::event::KeyCode;
 
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode,
-};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use tui::style::{Color, Style};
 use tui::{backend::CrosstermBackend, layout::Rect, Terminal};
 
@@ -59,6 +57,11 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
     let events = Events::new();
     let client = Client::new();
 
+    // Login before cache, otherwise metadata is empty.
+    if !app.user.is_empty() {
+        client.login(&app.user)?;
+    }
+
     // Attempt to load from cache. If not, continue as usual.
     let mut game_list: StatefulList<Game> = StatefulList::new();
     let mut cached: bool = false;
@@ -69,11 +72,6 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
             cached = true;
         }
         _ => game_list.restart(),
-    }
-
-    // Login after cache load, since a failed login needs to show the failure screen.
-    if !app.user.is_empty() {
-        client.login(&app.user)?;
     }
 
     loop {
@@ -238,7 +236,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                             break;
                         }
                     }
-                    KeyCode::Char('\n') | KeyCode::Enter  => {
+                    KeyCode::Char('\n') | KeyCode::Enter => {
                         let mut user = app.user.clone();
                         user.retain(|c| !c.is_whitespace());
                         terminal.hide_cursor()?;
@@ -263,7 +261,7 @@ fn entry() -> Result<(), Box<dyn std::error::Error>> {
                         game_list.query = "".to_string();
                         img = update_img(&game_list.selected());
                     }
-                    KeyCode::Char('\n') | KeyCode::Enter  => {
+                    KeyCode::Char('\n') | KeyCode::Enter => {
                         terminal.hide_cursor()?;
                         app.mode = Mode::Searched;
                     }

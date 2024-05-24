@@ -58,12 +58,17 @@ pub fn icon_directory() -> Result<PathBuf, STError> {
 pub fn steam_directory() -> Result<PathBuf, STError> {
     let dir = match env::var("STEAM_APP_DIR") {
         Ok(dir) => dir,
-        _ => "~/.steam/steam/Steamapps/common/".to_string(),
+        _ => "~/.steam/steam/steamapps/common/".to_string(),
     };
     mkdir(dir)
 }
 
-pub fn steam_run_wrapper() -> Result<PathBuf, STError> {
+pub fn steam_run_wrapper(id: i32) -> Result<PathBuf, STError> {
+    // Custom script always takes precedence, then env, then hardcoded path.
+    let custom_script = script_directory()?.join(&format!("{}.sh", id));
+    if custom_script.exists() {
+        return Ok(custom_script);
+    }
     let run = match env::var("STEAM_RUN_WRAPPER") {
         Ok(run) => run,
         _ => "~/.steam/bin32/steam-runtime/run.sh".to_string(),

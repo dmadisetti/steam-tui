@@ -203,11 +203,23 @@ fn execute(
                                 ) {
                                     let err = format!("{:?}", err);
                                     log!("Run script for:", name, "failed", err);
-                                    let mut reference = status.lock().unwrap();
-                                    *reference = Some(GameStatus::msg(
-                                        &*reference,
-                                        &format!("Error: {}", err),
-                                    ));
+                                    {
+                                        let mut reference = status.lock().unwrap();
+                                        *reference = Some(GameStatus::msg(
+                                            &*reference,
+                                            &format!("Error with script (trying direct): {}", err),
+                                        ));
+                                    }
+                                    // Try again as per #51
+                                    run_process(
+                                        "steam".to_string(),
+                                        vec![
+                                            "-silent".to_string(),
+                                            "-applaunch".to_string(),
+                                            id.to_string(),
+                                        ],
+                                        status,
+                                    );
                                 }
                             });
                             break;
@@ -232,14 +244,17 @@ fn execute(
                                 .collect::<Vec<String>>();
                             command.append(&mut args);
                             log!("Finding entry");
-                            let entry = match steam_run_wrapper() {
+                            let entry = match steam_run_wrapper(id) {
                                 Ok(wrapper) => wrapper.into_os_string().into_string().unwrap(),
                                 Err(STError::Problem(_)) => command.remove(0),
                                 Err(err) => {
                                     let mut reference = status.lock().unwrap();
-                                    *reference = Some(GameStatus::msg(&*reference, "Could not find entry program."));
+                                    *reference = Some(GameStatus::msg(
+                                        &*reference,
+                                        "Could not find entry program.",
+                                    ));
                                     return Err(err);
-                                }, // unwrap and rewrap to explicitly note this is an err.
+                                } // unwrap and rewrap to explicitly note this is an err.
                             };
                             log!("Exits loop");
                             let status = status.clone();
@@ -248,28 +263,7 @@ fn execute(
                                     let mut reference = status.lock().unwrap();
                                     *reference = Some(GameStatus::msg(&*reference, "running..."));
                                 }
-                                match process::Command::new(entry).args(command).output() {
-                                    Ok(output) => {
-                                        let mut reference = status.lock().unwrap();
-                                        *reference =
-                                            Some(GameStatus::msg(&*reference, "Fully Installed"));
-                                        log!(
-                                            "Launching stdout:",
-                                            &std::str::from_utf8(&output.stdout)
-                                        );
-                                        log!(
-                                            "Launching stderr:",
-                                            &std::str::from_utf8(&output.stderr)
-                                        );
-                                    }
-                                    Err(err) => {
-                                        let mut reference = status.lock().unwrap();
-                                        *reference = Some(GameStatus::msg(
-                                            &*reference,
-                                            &format!("failed to launch: {}", err),
-                                        ));
-                                    }
-                                }
+                                run_process(entry, command, status);
                             });
                             launched = true;
                             break;
@@ -444,6 +438,34 @@ fn execute(
     }
 }
 
+fn run_process(entry: String, command: Vec<String>, status: Arc<Mutex<Option<GameStatus>>>) {
+    match process::Command::new(entry).args(command).output() {
+        Ok(output) => {
+            let stderr = output.stderr.clone();
+            let stderr_snippet = &(String::from_utf8_lossy(&stderr)[..50]);
+            let mut reference = status.lock().unwrap();
+            *reference = Some(GameStatus::msg(
+                &*reference,
+                &(match output.status.code() {
+                    Some(0) => format!("ran (success)"),
+                    Some(n) => format!("failed with code {}: ({}...)", n, stderr_snippet),
+                    None => format!("Process terminated."),
+                }),
+            ));
+
+            log!("Launching stdout:", &std::str::from_utf8(&output.stdout));
+            log!("Launching stderr:", &std::str::from_utf8(&output.stderr));
+        }
+        Err(err) => {
+            let mut reference = status.lock().unwrap();
+            *reference = Some(GameStatus::msg(
+                &*reference,
+                &format!("failed to launch: {}", err),
+            ));
+        }
+    }
+}
+
 /// Manages and interfaces with SteamCmd threads.
 pub struct Client {
     receiver: Mutex<Receiver<String>>,
@@ -547,6 +569,7 @@ impl Client {
 
     /// Binds data from 'app_status' to a `GameStatus` object.
     pub fn status(&self, id: i32) -> Result<GameStatus, STError> {
+        log!("Getting status for", id);
         let sender = self.sender.lock()?;
         sender.send(Command::Cli(format!("app_status {}", id)))?;
         let receiver = self.receiver.lock()?;
@@ -615,7 +638,7 @@ fn keys_from_licenses(licenses: String) -> Vec<i32> {
 
 #[cfg(test)]
 mod tests {
-    use crate::client::{keys_from_licenses, Client, Command, State};
+    use crate::client::{Client, Command, State};
     use crate::util::error::STError;
     use std::sync::mpsc::channel;
     use std::sync::Arc;
