@@ -6,8 +6,12 @@ Just a simple TUI client for `steamcmd`. Allows for the graphical launching,
 updating, and downloading of steam games through a simple terminal client.
 Methodology informed by [steam-cli](https://github.com/berenm/steam-cli).
 
+> [!NOTE]
+> Steam no longer has a backend only mode. This client has become more limited,
+> but still potenitally useful for those who don't want to use the steam client.
+
 <p align="center">
-  <img width="600" alt="Example of rules_euler in action" src="screenshot.png">
+  <img width="600" alt="Example of steam-tui in action" src="screenshot.png">
 </p>
 
 ## Usage
@@ -20,9 +24,17 @@ steamcmd
 ```
 Launch the binary `steam-tui`, and rejoice :tada:. Help is in the client.
 
-Unable to launch games? Pressing space will start a bare-bones steam client (no
-graphics) in the background and will let you launch games that need steam
-libraries or have some sort of DRM.
+Unable to launch games? Pressing space will start a steam client and will let
+you launch games that need steam libraries or have some sort of DRM.
+
+> [!WARNING]
+> ## Still unable to launch games?
+>
+> You are not alone, but gaming on linux is getting better. You can define a
+> custom script to launch a specific game by creating
+> `$STEAM_TUI_SCRIPT_DIR/<game id>.sh`, steam TUI will pass in the file it
+> thinks should be run, but you can ignore this and just do whatever.
+> This reduces steam-tui to more of a launcher, but it's better than nothing.
 
 ## Features not in the help
 
@@ -64,6 +76,7 @@ time into this.
 
 Thank you to those who have heeded my call for more coffee!
 
+ - @abowen @KDanisme @jharlan-hash (sponsored major update 0.3.0)
  - @MathiasSven (sponsored minor update 0.2.1)
  - @vaelund (sponsored major update 0.2.0)
 

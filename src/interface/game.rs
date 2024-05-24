@@ -100,11 +100,14 @@ impl Game {
                     };
                     return Ok(game);
                 } else {
-                    return Err(STError::Problem("File a github issue. Something may have changed in the Steam definition.".to_string()));
+                    return Err(STError::Problem(
+                        "File a github issue. Something may have changed in the Steam definition."
+                            .to_string(),
+                    ));
                 }
             } else {
-              log!("Cannot get key", key);
-              log!(parse(lines));
+                log!("Cannot get key", key);
+                log!(parse(lines));
             }
         } else {
             log!("Cannot get nest");
