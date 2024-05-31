@@ -4,6 +4,8 @@ use std::process;
 
 use std::io::{BufRead, BufReader, Write};
 
+use crate::util::log::log;
+
 pub struct SteamCmd {
     iter: std::io::Split<BufReader<process::ChildStdout>>,
     stdin: process::ChildStdin,
@@ -39,10 +41,12 @@ impl SteamCmd {
         let mut cmd = SteamCmd::with_args_and_seperator(args, 0x1b)?;
 
         // Send start up data I guess yeah?
-        cmd.next();
-        cmd.next();
-        cmd.next();
-        cmd.next();
+        log!("Attempting to scrub past entry screen");
+        log!(0, cmd.next());
+        log!(1, cmd.next());
+        log!(2, cmd.next());
+        log!(3, cmd.next());
+        log!("Scrub successful");
 
         Ok(cmd)
     }
