@@ -1331,6 +1331,7 @@ dependencies = [
  "serde_json",
  "shellexpand",
  "terminal-light",
+ "truncrate",
  "tui",
  "tui-image-rgba-updated",
 ]
@@ -1513,6 +1514,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b7358be39f2f274f322d2aaed611acc57f382e8eb1e5b48cb9ae30933495ce7"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "truncrate"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73eead03a57feec88e556e6be8c3f6c9917688a15f9d410aedee1b6cb276445f"
+dependencies = [
+ "unicode-segmentation",
 ]
 
 [[package]]
