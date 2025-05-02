@@ -285,9 +285,17 @@ fn execute(
                     let mut updated = 0;
                     let waiting = queue.len();
                     let buf = cmd.maybe_next()?;
-                    let response = String::from_utf8_lossy(&buf);
+                    let mut response = String::from_utf8_lossy(&buf);
                     match *INPUT_LEX.tokenize(&line).as_slice() {
                         ["login", _] => {
+                            // BUG TEMP FIX: Scrub unhandled lines
+                            while response == "[1m\nSteam>" || response == "[0m" {
+                                if let Ok(buf) = cmd.maybe_next() {
+                                    response = String::from_utf8_lossy(&buf).into_owned().into();
+                                } else {
+                                    cmd.write("")?;
+                                }
+                            }
                             let response = response.to_string();
                             if response.contains("Login Failure") || response.contains("FAILED") {
                                 let mut state = state.lock()?;
