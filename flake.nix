@@ -82,6 +82,10 @@
               # binary
               self.packages.${system}.steam-tui
             ];
+            packages = with pkgs; [
+              bacon
+              rust-analyzer
+            ];
             STEAM_RUN_WRAPPER = "${pkgs.steam-run}/bin/steam-run";
           };
         });

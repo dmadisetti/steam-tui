@@ -441,8 +441,10 @@ fn execute(
 fn run_process(entry: String, command: Vec<String>, status: Arc<Mutex<Option<GameStatus>>>) {
     match process::Command::new(entry).args(command).output() {
         Ok(output) => {
-            let stderr = output.stderr.clone();
-            let stderr_snippet = &(String::from_utf8_lossy(&stderr)[..50]);
+            let stderr = String::from_utf8(output.stderr.clone()).unwrap();
+            use truncrate::TruncateToBoundary;
+            let stderr_snippet = &stderr.truncate_to_boundary(50);
+
             let mut reference = status.lock().unwrap();
             *reference = Some(GameStatus::msg(
                 &*reference,

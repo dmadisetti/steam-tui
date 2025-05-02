@@ -1,2 +1,11 @@
+# Unix
+.*
+
+
+# Git
+!.gitignore
+
+
+# Rust
 /target
 *.log
