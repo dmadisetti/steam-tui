@@ -285,18 +285,12 @@ fn execute(
                     let mut updated = 0;
                     let waiting = queue.len();
                     let buf = cmd.maybe_next()?;
-                    let mut response = String::from_utf8_lossy(&buf);
+                    let response = String::from_utf8_lossy(&buf);
                     match *INPUT_LEX.tokenize(&line).as_slice() {
                         ["login", _] => {
                             // BUG TEMP FIX: Scrub unhandled lines
-                            while response == "[1m\nSteam>" || response == "[0m" {
-                                if let Ok(buf) = cmd.maybe_next() {
-                                    response = String::from_utf8_lossy(&buf).into_owned().into();
-                                } else {
-                                    cmd.write("")?;
-                                }
-                            }
-                            let response = response.to_string();
+                            let mut response = response.to_string();
+                            (cmd, response) = scrub_past_responses(cmd, response, &["[0m", "[1m\nSteam>"], None);
                             if response.contains("Login Failure") || response.contains("FAILED") {
                                 let mut state = state.lock()?;
                                 *state = State::Failed;
@@ -430,16 +424,8 @@ fn execute(
                         }
                     }
                     // Iterate to scrub past Steam> prompt
-                    let buf = cmd.maybe_next()?;
-                    let mut prompt = String::from_utf8_lossy(&buf);
-                    log!(prompt);
-                    while prompt != "[1m\nSteam>" {
-                        if let Ok(buf) = cmd.maybe_next() {
-                            prompt = String::from_utf8_lossy(&buf).into_owned().into();
-                        } else {
-                            cmd.write("")?;
-                        }
-                    }
+                    let _response;
+                    (cmd, _response) = scrub_past_responses(cmd, String::from(""), &[], Some("[1m\nSteam>"));
                 }
             }
         }
@@ -628,6 +614,28 @@ impl Drop for Client {
         let receiver = self.receiver.lock().expect("In destructor");
         let _ = receiver.recv();
     }
+}
+
+// Skips lines matching any provided scrub_responses element or until line equals stop_at
+// passing empty scrub_responses makes it skip everything until line equals stop_at
+// returns the line after skipped lines or the line it stopped at
+fn scrub_past_responses(mut cmd: SteamCmd, initial_response: String, scrub_responses: &[&str], stop_at: Option<&str>) -> (SteamCmd, String) {
+    let mut response = initial_response;
+    let scrub_any = scrub_responses.len() == 0;
+    while scrub_any || scrub_responses.contains(&&*response) {
+        if let Ok(buf) = cmd.maybe_next() {
+            response = String::from_utf8_lossy(&buf).into_owned().into();
+        } else {
+            let _ = cmd.write("");
+        }
+        if let Some(_stop_at) = stop_at {
+            if *_stop_at == response {
+                break;
+            }
+
+        }
+    }
+    return (cmd, response);
 }
 
 // Just some helpers broken out for testing
