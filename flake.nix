@@ -14,6 +14,7 @@
         config = {
           allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
             "steam"
+            "steam-unwrapped"
             "steamcmd"
             "steam-original"
             "steam-run"
